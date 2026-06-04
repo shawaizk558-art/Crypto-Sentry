@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+# Keep environment variables out of version control
+.env
+
+# Prisma client is generated into src/generated/prisma (committed after generate)
+
+# User-uploaded avatars (keep directory via .gitkeep)
+public/uploads/avatars/*
+!public/uploads/avatars/.gitkeep
