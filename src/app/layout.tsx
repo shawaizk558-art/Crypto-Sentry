@@ -1,6 +1,5 @@
-import { AuthSessionProvider } from "@/components/providers/session-provider";
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Orbitron } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -12,7 +11,13 @@ const inter = Inter({
 const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains",
-  weight: ["400", "500"],
+  weight: ["400", "500", "600"],
+});
+
+const orbitron = Orbitron({
+  subsets: ["latin"],
+  variable: "--font-orbitron",
+  weight: ["500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
@@ -27,10 +32,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrains.variable}`}>
-      <body>
-        <AuthSessionProvider>{children}</AuthSessionProvider>
-      </body>
+    <html
+      lang="en"
+      className={`${inter.variable} ${jetbrains.variable} ${orbitron.variable}`}
+    >
+      <body>{children}</body>
     </html>
   );
 }

@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { getMarketData } from "@/lib/coingecko";
-import {
-  addToWatchlist,
-  getUserWatchlist,
-} from "@/lib/db/watchlist";
+import { addToWatchlist, getUserWatchlist } from "@/lib/db/watchlist";
+import { getSessionUser } from "@/lib/supabase/session";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const rows = await getUserWatchlist(session.user.id);
+  const rows = await getUserWatchlist(user.id);
   if (rows.length === 0) {
     return NextResponse.json({ items: [] });
   }
@@ -30,7 +27,9 @@ export async function GET() {
       symbol: coin?.symbol?.toUpperCase() ?? row.asset_id,
       image: coin?.image ?? "",
       lastPrice: coin?.current_price ?? 0,
+      change1h: coin?.price_change_percentage_1h ?? 0,
       change24h: coin?.price_change_percentage_24h ?? 0,
+      change7d: coin?.price_change_percentage_7d ?? 0,
       marketCap: coin?.market_cap ?? 0,
       addedAt: row.added_at,
     };
@@ -40,18 +39,21 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { assetId, assetName } = await request.json();
   if (!assetId || !assetName) {
-    return NextResponse.json({ error: "assetId and assetName required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "assetId and assetName required" },
+      { status: 400 },
+    );
   }
 
   const row = await addToWatchlist(
-    session.user.id,
+    user.id,
     assetId.toString(),
     assetName.toString(),
   );

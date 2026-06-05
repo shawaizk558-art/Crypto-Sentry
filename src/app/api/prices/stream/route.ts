@@ -1,7 +1,7 @@
-import { auth } from "@/lib/auth";
 import { getCacheVersion, subscribePriceUpdates } from "@/lib/market/cache-events";
 import { getMarketSnapshot } from "@/lib/market/memory-cache";
 import { ensureMarketPollerStarted } from "@/lib/market/poller";
+import { getSessionUser } from "@/lib/supabase/session";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
  * Frontend then fetches /api/prices (read cache only).
  */
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user) {
+  const user = await getSessionUser();
+  if (!user) {
     return new Response("Unauthorized", { status: 401 });
   }
 

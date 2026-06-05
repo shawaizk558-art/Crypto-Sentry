@@ -1,254 +1,321 @@
 "use client";
 
 import { OperativePageHeader } from "@/components/layout/operative-page-header";
+import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { AVATAR_BUCKET } from "@/lib/auth/profile";
+import { createClient } from "@/lib/supabase/client";
 import {
   Activity,
   Camera,
-  LogOut,
+  Check,
+  Pencil,
   Settings,
   Shield,
   User,
+  X,
   Zap,
 } from "lucide-react";
-import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
-import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 
-type ProfileData = {
-  name: string | null;
-  email: string | null;
-  image: string | null;
+type ProfileViewProps = {
+  email: string;
+  name: string;
+  avatarUrl: string | null;
+  userId: string;
   createdAt: string;
-  usesGoogle: boolean;
-  twoFactorVerified: boolean;
-  watchlistCount: number;
-  alertThreshold: number;
-  emailReports: boolean;
 };
 
-export function ProfileView() {
-  const { data: session, update } = useSession();
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [name, setName] = useState("");
-  const [image, setImage] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const ACCEPTED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+export function ProfileView({
+  email,
+  name: initialName,
+  avatarUrl: initialAvatarUrl,
+  userId,
+  createdAt,
+}: ProfileViewProps) {
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetch("/api/profile")
-      .then((r) => r.json())
-      .then((data) => {
-        setProfile(data);
-        setName(data.name ?? "");
-        setImage(data.image ?? null);
-      });
-  }, []);
+  const [name, setName] = useState(initialName);
+  const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState(initialName);
+  const [savingName, setSavingName] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function uploadAvatar(file: File) {
-    setUploading(true);
-    setUploadError(null);
-    const formData = new FormData();
-    formData.append("file", file);
-    const res = await fetch("/api/profile/avatar", {
-      method: "POST",
-      body: formData,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setUploadError(data.error ?? "Upload failed");
-      setUploading(false);
-      return;
-    }
-    setImage(data.image);
-    setProfile((p) => (p ? { ...p, image: data.image } : p));
-    await update({ image: data.image });
-    setUploading(false);
-  }
-
-  function onAvatarSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (file) void uploadAvatar(file);
-  }
+  const joined = new Date(createdAt).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 
   async function saveName() {
-    setSaving(true);
-    const res = await fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    if (res.ok) {
-      await update({ name });
-      setProfile((p) => (p ? { ...p, name } : p));
+    const trimmed = draftName.trim();
+    if (!trimmed) {
+      setError("Name cannot be empty.");
+      return;
     }
-    setSaving(false);
+    if (trimmed === name) {
+      setEditingName(false);
+      return;
+    }
+
+    setSavingName(true);
+    setError(null);
+
+    const supabase = createClient();
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { full_name: trimmed },
+    });
+
+    setSavingName(false);
+
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
+    setName(trimmed);
+    setEditingName(false);
+    router.refresh();
   }
 
-  const displayName = (profile?.name ?? session?.user?.name ?? "OPERATIVE").toUpperCase();
+  async function handleAvatarChange(file: File) {
+    if (!ACCEPTED_AVATAR_TYPES.includes(file.type)) {
+      setError("Use a JPEG, PNG, WebP, or GIF image.");
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setError("Image must be 2 MB or smaller.");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setError(null);
+
+    const supabase = createClient();
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const filePath = `${userId}/avatar.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(AVATAR_BUCKET)
+      .upload(filePath, file, { upsert: true, contentType: file.type });
+
+    if (uploadError) {
+      setUploadingAvatar(false);
+      setError(
+        uploadError.message.includes("Bucket not found")
+          ? "Avatar storage is not set up yet. Run supabase/avatars-bucket.sql in your Supabase project."
+          : uploadError.message,
+      );
+      return;
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(filePath);
+
+    const cacheBustedUrl = `${publicUrl}?t=${Date.now()}`;
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { avatar_url: cacheBustedUrl },
+    });
+
+    setUploadingAvatar(false);
+
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
+    setAvatarUrl(cacheBustedUrl);
+    router.refresh();
+  }
 
   return (
-    <div className="px-8 py-8">
+    <div className="page-container pb-16">
       <OperativePageHeader
         icon={User}
-        title="AGENT PROFILE"
-        subtitle="Operator node clearance"
+        title="Operative Profile"
+        subtitle="Google sign-in + email verification"
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="card-surface p-6">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="card-surface card-glow-cyan p-6 lg:col-span-2">
+          <div className="flex items-center gap-5">
             <div className="relative shrink-0">
+              <UserAvatar
+                src={avatarUrl}
+                name={name}
+                email={email}
+                size="lg"
+                className={uploadingAvatar ? "opacity-50" : undefined}
+              />
               <button
                 type="button"
-                disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
-                className="group relative flex h-28 w-28 flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-neon-green/40 bg-neon-green/5 transition-colors hover:border-neon-green/70 hover:bg-neon-green/10 disabled:opacity-60"
+                disabled={uploadingAvatar}
+                className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-sm border border-neon-cyan/40 bg-bg-deep text-neon-cyan transition-colors hover:bg-neon-cyan/10 disabled:opacity-50"
+                aria-label="Upload profile photo"
               >
-                {image ? (
-                  <Image
-                    src={image}
-                    alt="Profile"
-                    fill
-                    unoptimized
-                    className="object-cover"
-                  />
-                ) : (
-                  <>
-                    <Camera className="h-6 w-6 text-neon-green/60" />
-                    <span className="mt-2 font-mono text-[9px] uppercase tracking-wider text-muted">
-                      Upload photo
-                    </span>
-                  </>
-                )}
-                <span className="absolute inset-0 flex items-center justify-center bg-black/50 font-mono text-[9px] uppercase tracking-wider text-neon-green opacity-0 transition-opacity group-hover:opacity-100">
-                  {uploading ? "Uploading…" : "Change photo"}
-                </span>
+                <Camera className="h-4 w-4" strokeWidth={1.5} />
               </button>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="sr-only"
-                onChange={onAvatarSelected}
+                accept={ACCEPTED_AVATAR_TYPES.join(",")}
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleAvatarChange(file);
+                  e.target.value = "";
+                }}
               />
-              {uploadError && (
-                <p className="mt-2 max-w-[7rem] text-center text-[10px] text-danger">
-                  {uploadError}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              {editingName ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    value={draftName}
+                    onChange={(e) => setDraftName(e.target.value)}
+                    maxLength={80}
+                    autoFocus
+                    className="cyber-input max-w-xs py-2 text-base font-bold"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void saveName();
+                      if (e.key === "Escape") {
+                        setDraftName(name);
+                        setEditingName(false);
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="solid"
+                    disabled={savingName}
+                    onClick={() => void saveName()}
+                  >
+                    <Check className="h-3 w-3" />
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={savingName}
+                    onClick={() => {
+                      setDraftName(name);
+                      setEditingName(false);
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="font-display text-xl font-bold text-foreground">{name}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraftName(name);
+                      setEditingName(true);
+                      setError(null);
+                    }}
+                    className="rounded-sm p-1.5 text-muted transition-colors hover:bg-bg-elevated hover:text-neon-cyan"
+                    aria-label="Edit name"
+                  >
+                    <Pencil className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  </button>
+                </div>
+              )}
+              <p className="text-sm text-muted">{email}</p>
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-dim">
+                Member since {joined}
+              </p>
+              {uploadingAvatar && (
+                <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-neon-cyan">
+                  Uploading photo…
                 </p>
               )}
             </div>
-            <div className="flex-1">
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full border-b border-border bg-transparent pb-2 text-2xl font-bold uppercase text-foreground focus:border-neon-green/50 focus:outline-none"
-              />
-              <p className="mt-1 text-xs text-muted">Level 4 operative</p>
-              <p className="mt-2 text-sm text-muted">{profile?.email ?? session?.user?.email}</p>
-              <button
-                type="button"
-                disabled={saving}
-                onClick={saveName}
-                className="mt-4 text-xs font-semibold uppercase tracking-wider text-neon-green hover:underline disabled:opacity-50"
-              >
-                {saving ? "Saving…" : "Save name"}
-              </button>
-              <button
-                type="button"
-                onClick={() => signOut({ callbackUrl: "/auth/login" })}
-                className="mt-6 flex items-center gap-2 rounded-lg border border-danger/40 px-4 py-2 text-xs font-bold uppercase tracking-wider text-danger hover:bg-danger/10"
-              >
-                <LogOut className="h-4 w-4" />
-                Terminate session
-              </button>
-            </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-4">
-            <div className="rounded-xl border border-border bg-bg-elevated p-4">
-              <Zap className="h-4 w-4 text-neon-green" />
-              <p className="mt-2 font-mono text-[10px] uppercase text-muted">Status</p>
-              <p className="text-sm font-semibold text-neon-green">Operational</p>
-            </div>
-            <div className="rounded-xl border border-border bg-bg-elevated p-4">
-              <Activity className="h-4 w-4 text-neon-green" />
-              <p className="mt-2 font-mono text-[10px] uppercase text-muted">Clearance</p>
-              <p className="text-sm font-semibold text-foreground">High</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="card-surface p-6">
-            <div className="mb-4 flex items-center gap-2">
-              <Settings className="h-4 w-4 text-neon-green" />
-              <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-                System preferences
-              </h2>
-            </div>
-            <div className="space-y-4 text-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-foreground">Volatility sensitivity</p>
-                  <p className="text-xs text-muted">
-                    Protocol delta &gt; {profile?.alertThreshold ?? -2}%
-                  </p>
-                </div>
-                <span className="rounded-md bg-neon-green/15 px-2 py-1 text-xs font-bold text-neon-green">
-                  ACTIVE
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-foreground">Email intelligence</p>
-                  <p className="text-xs text-muted">Daily summary reports</p>
-                </div>
-                <span
-                  className={`rounded-md px-2 py-1 text-xs font-bold ${
-                    profile?.emailReports
-                      ? "bg-neon-green/15 text-neon-green"
-                      : "bg-bg-elevated text-muted"
-                  }`}
-                >
-                  {profile?.emailReports ? "ON" : "OFF"}
-                </span>
-              </div>
-            </div>
-            <Link
-              href="/settings"
-              className="mt-4 inline-block text-xs text-neon-green hover:underline"
-            >
-              Edit in settings →
-            </Link>
-          </div>
-
-          <div className="card-surface p-6">
-            <div className="mb-4 flex items-center gap-2">
-              <Shield className="h-4 w-4 text-neon-green" />
-              <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-                Security link
-              </h2>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted">Two-factor ID</span>
-              <span className="rounded-md bg-neon-green/15 px-2 py-1 text-xs font-bold text-neon-green">
-                {profile?.twoFactorVerified || profile?.usesGoogle ? "VERIFIED" : "PENDING"}
-              </span>
-            </div>
-            <p className="mt-4 font-mono text-xs text-dim">
-              Watchlist targets: {profile?.watchlistCount ?? 0}
+          {error && (
+            <p className="mt-4 rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+              {error}
             </p>
-            {profile?.createdAt && (
-              <p className="mt-1 font-mono text-xs text-dim">
-                Node since: {new Date(profile.createdAt).toISOString().slice(0, 16).replace("T", " ")} UTC
-              </p>
-            )}
-          </div>
+          )}
         </div>
+
+        <div className="space-y-3">
+          <InfoCard
+            icon={Shield}
+            title="Security"
+            detail="Google OAuth + Gmail code"
+            accent="cyan"
+          />
+          <InfoCard
+            icon={Activity}
+            title="Session"
+            detail="Active"
+            accent="green"
+          />
+          <InfoCard
+            icon={Zap}
+            title="Alerts"
+            detail="Global flash-crash feed"
+            accent="magenta"
+          />
+          <Link
+            href="/settings"
+            className="card-surface flex items-center gap-3 p-4 transition-all hover:border-neon-cyan/30 hover:shadow-[0_0_16px_rgba(0,240,255,0.08)]"
+          >
+            <Settings className="h-5 w-5 text-muted" />
+            <span className="text-sm font-medium text-foreground">System settings</span>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoCard({
+  icon: Icon,
+  title,
+  detail,
+  accent,
+}: {
+  icon: typeof Shield;
+  title: string;
+  detail: string;
+  accent: "cyan" | "green" | "magenta";
+}) {
+  const colors = {
+    cyan: "text-neon-cyan",
+    green: "text-neon-green",
+    magenta: "text-neon-magenta",
+  };
+
+  return (
+    <div className="card-surface flex items-center gap-3 p-4">
+      <div className="flex h-9 w-9 items-center justify-center rounded-sm border border-border bg-bg-elevated">
+        <Icon className={`h-4 w-4 ${colors[accent]}`} />
+      </div>
+      <div>
+        <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-foreground">
+          {title}
+        </p>
+        <p className="text-[10px] text-muted">{detail}</p>
       </div>
     </div>
   );

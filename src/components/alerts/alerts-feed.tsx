@@ -34,14 +34,14 @@ export function AlertsFeed() {
   const high = alerts.filter((a) => a.severity === "high").length;
 
   return (
-    <>
+    <div className="page-container">
       <PageHeader
         title="Alert Log"
         description="Live flash-crash detections from the in-process surveillance poller (30s cycles)."
         action={
           <button
             type="button"
-            className="inline-flex items-center gap-2 border border-border bg-bg-elevated px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-muted transition-colors hover:border-border-glow hover:text-foreground"
+            className="inline-flex items-center gap-2 rounded-sm border border-border bg-bg-elevated px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-muted transition-colors hover:border-glow hover:text-foreground"
           >
             <Filter className="h-3.5 w-3.5" strokeWidth={1.5} />
             Filter
@@ -56,8 +56,18 @@ export function AlertsFeed() {
           icon={TrendingDown}
           variant="cyan"
         />
-        <StatCard label="Critical" value={loading ? "…" : critical} icon={AlertOctagon} variant="danger" />
-        <StatCard label="High severity" value={loading ? "…" : high} icon={AlertOctagon} />
+        <StatCard
+          label="Critical"
+          value={loading ? "…" : critical}
+          icon={AlertOctagon}
+          variant="danger"
+        />
+        <StatCard
+          label="High severity"
+          value={loading ? "…" : high}
+          icon={AlertOctagon}
+          variant="magenta"
+        />
       </section>
 
       <Panel urgent>
@@ -77,6 +87,6 @@ export function AlertsFeed() {
           )}
         </div>
       </Panel>
-    </>
+    </div>
   );
 }

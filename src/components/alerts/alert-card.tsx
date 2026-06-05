@@ -11,12 +11,14 @@ export function AlertCard({
   index?: number;
 }) {
   const isCritical = alert.severity === "critical";
+  const isHigh = alert.severity === "high";
 
   return (
     <article
       className={cn(
-        "animate-slide-in group flex items-stretch gap-4 border-b border-border px-5 py-4 transition-colors last:border-b-0 hover:bg-bg-elevated/50",
-        isCritical && "bg-danger/[0.03]",
+        "animate-slide-in group flex items-stretch gap-4 border-b border-border/60 px-5 py-4 transition-colors last:border-b-0 hover:bg-neon-cyan/[0.03]",
+        isCritical && "bg-danger/[0.04]",
+        isHigh && "bg-neon-magenta/[0.03]",
       )}
       style={{ animationDelay: `${index * 60}ms` }}
     >
@@ -24,8 +26,10 @@ export function AlertCard({
         className={cn(
           "flex w-12 shrink-0 flex-col items-center justify-center rounded-sm border font-mono text-xs font-bold",
           isCritical
-            ? "border-danger/40 bg-danger/10 text-danger"
-            : "border-border bg-bg-elevated text-muted",
+            ? "border-danger/50 bg-danger/10 text-danger"
+            : isHigh
+              ? "border-neon-magenta/40 bg-neon-magenta/10 text-neon-magenta"
+              : "border-neon-cyan/30 bg-neon-cyan/5 text-neon-cyan",
         )}
       >
         {alert.symbol.slice(0, 3)}
@@ -47,7 +51,7 @@ export function AlertCard({
       </div>
 
       <div className="flex shrink-0 flex-col items-end justify-center gap-1">
-        <div className="flex items-center gap-1 font-mono text-lg font-bold text-danger">
+        <div className="flex items-center gap-1 font-mono text-lg font-bold text-neon-magenta text-glow-magenta">
           <TrendingDown className="h-4 w-4" strokeWidth={2} />
           {formatPercent(alert.dropPercentage)}
         </div>

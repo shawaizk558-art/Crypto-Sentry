@@ -5,7 +5,9 @@ export type MarketCoin = {
   image: string;
   current_price: number;
   market_cap: number;
+  price_change_percentage_1h: number;
   price_change_percentage_24h: number;
+  price_change_percentage_7d: number;
 };
 
 export type MarketCacheMeta = {

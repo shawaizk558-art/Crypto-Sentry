@@ -1,8 +1,10 @@
 "use client";
 
 import { OperativePageHeader } from "@/components/layout/operative-page-header";
+import { PriceChangePills } from "@/components/ui/price-change";
 import { useLivePrices } from "@/hooks/use-live-prices";
 import { formatLiveUsd, liveMarketFetchInit } from "@/lib/coingecko-client";
+import { cn } from "@/lib/utils";
 import { ExternalLink, Star, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -15,7 +17,9 @@ type WatchlistItem = {
   symbol: string;
   image: string;
   lastPrice: number;
+  change1h: number;
   change24h: number;
+  change7d: number;
 };
 
 export function WatchlistView() {
@@ -51,7 +55,9 @@ export function WatchlistView() {
         symbol: coin?.symbol?.toUpperCase() ?? row.symbol,
         image: coin?.image ?? row.image,
         lastPrice: coin?.current_price ?? row.lastPrice,
-        change24h: coin?.price_change_percentage_24h ?? row.change24h,
+        change1h: coin?.price_change_percentage_1h ?? row.change1h ?? 0,
+        change24h: coin?.price_change_percentage_24h ?? row.change24h ?? 0,
+        change7d: coin?.price_change_percentage_7d ?? row.change7d ?? 0,
       };
     });
   }, [rows, priceById]);
@@ -62,16 +68,13 @@ export function WatchlistView() {
   }
 
   return (
-    <div className="px-8 py-8">
+    <div className="page-container">
       <OperativePageHeader
         icon={Star}
-        title="MY WATCHLIST"
+        title="Watchlist"
         subtitle="Prices refresh when server cache updates (~30s)"
         action={
-          <Link
-            href="/market"
-            className="rounded-xl border border-neon-green/40 bg-neon-green/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-neon-green hover:bg-neon-green/20"
-          >
+          <Link href="/market" className="cyber-btn-primary px-4 py-2.5 text-xs">
             Add assets
           </Link>
         }
@@ -80,13 +83,25 @@ export function WatchlistView() {
       {loading ? (
         <p className="font-mono text-sm text-muted">Loading watchlist…</p>
       ) : items.length === 0 ? (
-        <p className="text-sm text-muted">No assets on your watchlist yet.</p>
+        <div className="card-surface flex flex-col items-center justify-center p-12 text-center">
+          <Star className="mb-4 h-10 w-10 text-dim" />
+          <p className="text-sm text-muted">No assets on your watchlist yet.</p>
+          <Link href="/market" className="mt-4 cyber-btn-primary px-6 py-2.5 text-xs">
+            Browse market
+          </Link>
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => {
             const negative = item.change24h < 0;
             return (
-              <div key={item.id} className="card-surface p-5">
+              <div
+                key={item.id}
+                className={cn(
+                  "card-surface p-5 transition-all hover:border-neon-cyan/20",
+                  negative && "card-glow-danger",
+                )}
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     {item.image ? (
@@ -95,34 +110,37 @@ export function WatchlistView() {
                         alt=""
                         width={40}
                         height={40}
-                        className="rounded-full"
+                        className="rounded-sm"
                       />
                     ) : null}
                     <div>
-                      <p className="font-semibold text-foreground">{item.assetName}</p>
-                      <p className="font-mono text-xs text-muted">{item.symbol}</p>
+                      <p className="font-medium text-foreground">{item.assetName}</p>
+                      <p className="font-mono text-xs text-dim">{item.symbol}</p>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => void remove(item.assetId)}
-                    className="text-muted hover:text-danger"
+                    className="rounded-sm p-1 text-dim transition-colors hover:bg-danger/10 hover:text-danger"
                     aria-label="Remove"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-                <p className="mt-4 text-2xl font-bold text-foreground">
+                <p className="mt-4 font-mono text-2xl font-bold text-foreground">
                   {formatLiveUsd(item.lastPrice)}
                 </p>
-                <p
-                  className={`mt-1 font-mono text-sm ${negative ? "text-danger" : "text-neon-green"}`}
-                >
-                  {item.change24h.toFixed(2)}% 24h
-                </p>
+                <PriceChangePills
+                  className="mt-3"
+                  changes={{
+                    change1h: item.change1h,
+                    change24h: item.change24h,
+                    change7d: item.change7d,
+                  }}
+                />
                 <Link
-                  href={`/market`}
-                  className="mt-3 inline-flex items-center gap-1 text-xs text-neon-green hover:underline"
+                  href="/market"
+                  className="mt-3 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-neon-cyan hover:underline"
                 >
                   View in market <ExternalLink className="h-3 w-3" />
                 </Link>

@@ -26,7 +26,7 @@ export function AuthField({
         />
         <input
           id={id}
-          className="w-full rounded-xl border border-border bg-bg-elevated py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-dim focus:border-neon-green/50 focus:outline-none focus:ring-1 focus:ring-neon-green/30"
+          className="cyber-input py-3 pl-10 pr-4"
           {...props}
         />
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { BarChart, Sparkline } from "@/components/charts/sparkline";
+import { PriceChangePills } from "@/components/ui/price-change";
 import { formatLiveUsd, liveMarketFetchInit } from "@/lib/coingecko-client";
 import { useLivePrices } from "@/hooks/use-live-prices";
 import type { MarketCoin } from "@/types/market";
@@ -10,10 +11,13 @@ import {
   BarChart3,
   Database,
   Globe,
+  Radio,
   TrendingDown,
+  TrendingUp,
   Zap,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const PRIORITY_IDS = ["bitcoin", "ethereum"];
@@ -117,7 +121,9 @@ export function TerminalHome() {
       id: coin.id as string,
       pair: `${coin.symbol.toUpperCase()}/USD`,
       price: coin.current_price,
-      change: coin.price_change_percentage_24h,
+      change1h: coin.price_change_percentage_1h,
+      change24h: coin.price_change_percentage_24h,
+      change7d: coin.price_change_percentage_7d,
       status:
         coin.price_change_percentage_24h <= -2
           ? ("ALERT" as const)
@@ -141,38 +147,50 @@ export function TerminalHome() {
         : "NEUTRAL";
 
   const hasAlerts = alerts.length > 0;
+  const assetsDown = coins.filter((c) => (c.price_change_percentage_24h ?? 0) < 0).length;
 
   return (
-    <div className="px-8 py-8">
+    <div className="page-container">
       {meta?.source === "empty" && (
-        <p className="mb-4 rounded-lg border border-neon-green/30 bg-neon-green/10 px-4 py-2 font-mono text-xs text-neon-green">
-          Syncing live market data from CoinGecko…
-        </p>
+        <div className="mb-4 flex items-center gap-2 rounded-sm border border-neon-cyan/30 bg-neon-cyan/5 px-4 py-2.5">
+          <Radio className="h-4 w-4 animate-pulse text-neon-cyan" />
+          <p className="font-mono text-xs text-neon-cyan">
+            Syncing live market data from CoinGecko…
+          </p>
+        </div>
       )}
       {meta?.stale && meta.source !== "empty" && (meta.coinCount ?? 0) > 0 && (
-        <p className="mb-4 rounded-lg border border-danger/30 bg-danger/10 px-4 py-2 font-mono text-xs text-danger">
-          Market feed stale — showing last cached snapshot
-          {meta.ageMs != null ? ` (${Math.round(meta.ageMs / 1000)}s old)` : ""}
-        </p>
+        <div className="mb-4 flex items-center gap-2 rounded-sm border border-danger/30 bg-danger/5 px-4 py-2.5">
+          <AlertCircle className="h-4 w-4 text-danger" />
+          <p className="font-mono text-xs text-danger">
+            Market feed stale — showing last cached snapshot
+            {meta.ageMs != null ? ` (${Math.round(meta.ageMs / 1000)}s old)` : ""}
+          </p>
+        </div>
       )}
 
       <div className="mb-8">
-        <h1 className="text-4xl font-bold italic tracking-tight text-foreground md:text-5xl">
-          TERMINAL ONE
+        <div className="mb-2 flex items-center gap-2">
+          <span className="h-px flex-1 bg-gradient-to-r from-neon-cyan/50 to-transparent" />
+          <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-neon-cyan">
+            Command Center
+          </span>
+          <span className="h-px flex-1 bg-gradient-to-l from-neon-magenta/50 to-transparent" />
+        </div>
+        <h1 className="font-display text-3xl font-bold uppercase tracking-wider text-foreground md:text-4xl">
+          Dashboard
         </h1>
-        <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.25em] text-muted">
-          Real-Time Intelligence Aggregate V4.2.0
+        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+          Real-time intelligence aggregate
           {meta && !loading
-            ? ` · ${meta.coinCount} assets · CoinGecko every ${(meta.serverPollIntervalMs ?? 30000) / 1000}s · UI on cache update${connected ? "" : " (connecting…)"}${tickAgeSec !== null ? ` · data ${tickAgeSec}s old` : ""}`
+            ? ` · ${meta.coinCount} assets · poll ${(meta.serverPollIntervalMs ?? 30000) / 1000}s${connected ? "" : " · connecting…"}${tickAgeSec !== null ? ` · data ${tickAgeSec}s old` : ""}`
             : ""}
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12">
         <div className="card-surface p-5 xl:col-span-3">
-          <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted">
-            Market Overview
-          </p>
+          <p className="data-label mb-4">Market Overview</p>
           <div className="space-y-4">
             <OverviewStat
               icon={Globe}
@@ -195,7 +213,10 @@ export function TerminalHome() {
 
         {loading ? (
           <div className="card-surface flex items-center justify-center p-8 xl:col-span-6">
-            <p className="font-mono text-sm text-muted">Syncing live market cache…</p>
+            <div className="text-center">
+              <Radio className="mx-auto mb-3 h-6 w-6 animate-pulse text-neon-cyan" />
+              <p className="font-mono text-sm text-muted">Syncing live market cache…</p>
+            </div>
           </div>
         ) : (
           terminalAssets.map((asset) => (
@@ -208,39 +229,62 @@ export function TerminalHome() {
         )}
 
         <div className="card-surface flex min-h-[280px] flex-col p-5 md:col-span-2 xl:col-span-3 xl:row-span-2 xl:min-h-[340px]">
-          <div className="mb-4 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-neon-green" strokeWidth={2} />
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted">
-              System Alerts Live Feed
-            </p>
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-neon-magenta" strokeWidth={2} />
+              <p className="data-label">Alert Feed</p>
+            </div>
+            <Link
+              href="/alerts"
+              className="font-mono text-[9px] uppercase tracking-wider text-neon-cyan hover:underline"
+            >
+              View all →
+            </Link>
           </div>
-          <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3">
             {hasAlerts ? (
-              <p className="text-sm text-muted">
-                {alerts.length} recent drop{alerts.length === 1 ? "" : "s"} — see Alerts
-              </p>
+              <>
+                <p className="font-display text-4xl font-bold text-neon-magenta text-glow-magenta">
+                  {alerts.length}
+                </p>
+                <p className="text-center text-sm text-muted">
+                  Recent drop{alerts.length === 1 ? "" : "s"} detected
+                </p>
+              </>
             ) : (
-              <p className="text-center text-sm italic text-dim">
-                No alerts triggered
-              </p>
+              <>
+                <div className="flex h-12 w-12 items-center justify-center rounded-sm border border-border bg-bg-elevated">
+                  <Zap className="h-5 w-5 text-dim" />
+                </div>
+                <p className="text-center text-sm text-dim">No alerts triggered</p>
+              </>
             )}
           </div>
         </div>
 
-        <div className="relative overflow-hidden card-surface p-6 md:col-span-2 xl:col-span-6">
+        <div className="relative overflow-hidden card-surface card-glow-cyan p-6 md:col-span-2 xl:col-span-6">
           <Zap
-            className="pointer-events-none absolute right-6 top-6 h-24 w-24 text-neon-green/5"
+            className="pointer-events-none absolute right-6 top-6 h-24 w-24 text-neon-cyan/5"
             strokeWidth={0.5}
           />
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted">
-            Sentry Analytics
-          </p>
+          <p className="data-label mb-3">Sentry Analytics</p>
           <p className="max-w-2xl text-sm leading-relaxed text-muted">
             Live aggregate from top-100 cache suggests a{" "}
-            <span className="font-bold text-neon-green text-glow-green">{sentiment}</span>{" "}
-            bias. Server hits CoinGecko every 30s; this screen updates when new prices land.
+            <span
+              className={cn(
+                "font-display font-bold uppercase",
+                sentiment === "BULLISH"
+                  ? "text-neon-green text-glow-green"
+                  : sentiment === "BEARISH"
+                    ? "text-neon-magenta text-glow-magenta"
+                    : "text-neon-cyan text-glow-cyan",
+              )}
+            >
+              {sentiment}
+            </span>{" "}
+            bias. Server polls CoinGecko every 30s; this screen updates on new prices.
           </p>
-          <div className="mt-5 flex flex-wrap gap-4">
+          <div className="mt-5 flex flex-wrap gap-3">
             <MetricPill
               label="Volatility Index"
               value={`${Math.abs(overview.avgChange).toFixed(1)}%`}
@@ -248,7 +292,7 @@ export function TerminalHome() {
             />
             <MetricPill
               label="Assets Down 24H"
-              value={`${coins.filter((c) => (c.price_change_percentage_24h ?? 0) < 0).length}`}
+              value={`${assetsDown}`}
               tag="COUNT"
               highlight
             />
@@ -256,17 +300,22 @@ export function TerminalHome() {
         </div>
 
         <div className="card-surface p-5 md:col-span-2 xl:col-span-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">
-            24H Market Change
-          </p>
-          <p
-            className={cn(
-              "text-3xl font-bold",
-              overview.avgChange < 0 ? "text-danger" : "text-neon-green",
+          <p className="data-label mb-2">24H Market Change</p>
+          <div className="flex items-center gap-2">
+            <p
+              className={cn(
+                "font-display text-3xl font-bold",
+                overview.avgChange < 0 ? "text-neon-magenta text-glow-magenta" : "text-neon-green text-glow-green",
+              )}
+            >
+              {loading ? "…" : `${overview.avgChange.toFixed(2)}%`}
+            </p>
+            {overview.avgChange < 0 ? (
+              <TrendingDown className="h-5 w-5 text-neon-magenta" />
+            ) : (
+              <TrendingUp className="h-5 w-5 text-neon-green" />
             )}
-          >
-            {loading ? "…" : `${overview.avgChange.toFixed(2)}%`}
-          </p>
+          </div>
           <div className="mt-4">
             <BarChart data={marketChangeBars.length ? marketChangeBars : [40, 55, 45, 60]} />
           </div>
@@ -289,15 +338,15 @@ function OverviewStat({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-bg-elevated">
-        <Icon className="h-4 w-4 text-muted" strokeWidth={1.5} />
+      <div className="flex h-9 w-9 items-center justify-center rounded-sm border border-border bg-bg-elevated">
+        <Icon className="h-4 w-4 text-neon-cyan/70" strokeWidth={1.5} />
       </div>
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-dim">{label}</p>
+        <p className="font-mono text-[9px] uppercase tracking-wider text-dim">{label}</p>
         <p
           className={cn(
-            "text-lg font-bold",
-            negative ? "text-danger" : "text-foreground",
+            "font-mono text-lg font-bold",
+            negative ? "text-neon-magenta" : "text-foreground",
           )}
         >
           {value}
@@ -315,52 +364,67 @@ function AssetPriceCard({
     id: string;
     pair: string;
     price: number;
-    change: number;
-    status: string;
+    change1h: number;
+    change24h: number;
+    change7d: number;
+    status: "STABLE" | "ALERT";
     sparkline: number[];
   };
   pulse?: boolean;
 }) {
-  const negative = asset.change < 0;
+  const negative = asset.change24h < 0;
 
   return (
     <div
       className={cn(
-        "card-surface p-5 xl:col-span-3 transition-shadow",
-        pulse && "ring-2 ring-neon-green/60 shadow-[0_0_24px_rgba(0,255,65,0.15)]",
+        "card-surface min-h-[228px] p-6 xl:col-span-3 transition-all",
+        pulse && "card-glow-cyan ring-1 ring-neon-cyan/40",
+        asset.status === "ALERT" && "card-glow-danger",
       )}
     >
-      <div className="mb-1 flex items-start justify-between">
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted">
-            {asset.pair}
-          </p>
-          <div className="mt-1 flex items-center gap-2">
-            <p className="text-2xl font-bold text-foreground md:text-3xl">
-              {formatLiveUsd(asset.price)}
-            </p>
-            {negative && (
-              <TrendingDown className="h-4 w-4 text-danger" strokeWidth={2} />
-            )}
-          </div>
-        </div>
-        <span
+      <div className="flex items-start justify-between gap-3">
+        <p className="data-label">{asset.pair}</p>
+        <div
           className={cn(
-            "rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+            "shrink-0 rounded-sm border border-border bg-bg-elevated/50 px-2.5 py-1.5",
             asset.status === "ALERT"
-              ? "border-danger/40 text-danger"
-              : "border-neon-green/40 text-neon-green",
+              ? "border-neon-magenta/30"
+              : "border-neon-green/30",
           )}
         >
-          {asset.status}
-        </span>
+          <p
+            className={cn(
+              "font-mono text-[10px] font-bold uppercase tracking-wider",
+              asset.status === "ALERT" ? "text-neon-magenta" : "text-neon-green",
+            )}
+          >
+            {asset.status}
+          </p>
+        </div>
       </div>
-      <div className="mt-3 h-20">
-        <Sparkline data={asset.sparkline} />
+
+      <div className="mt-5 flex items-center gap-2">
+        <p className="font-mono text-2xl font-bold text-foreground md:text-3xl">
+          {formatLiveUsd(asset.price)}
+        </p>
+        {negative ? (
+          <TrendingDown className="h-4 w-4 text-neon-magenta" strokeWidth={2} />
+        ) : (
+          <TrendingUp className="h-4 w-4 text-neon-green" strokeWidth={2} />
+        )}
       </div>
-      <p className="mt-2 text-[9px] uppercase tracking-widest text-dim">
-        Live cache · {asset.change.toFixed(2)}% 24h
-      </p>
+
+      <div className="mt-4 h-20">
+        <Sparkline data={asset.sparkline} positive={!negative} />
+      </div>
+      <PriceChangePills
+        className="mt-3"
+        changes={{
+          change1h: asset.change1h,
+          change24h: asset.change24h,
+          change7d: asset.change7d,
+        }}
+      />
     </div>
   );
 }
@@ -377,14 +441,14 @@ function MetricPill({
   highlight?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-bg-elevated px-4 py-3">
-      <p className="text-[10px] uppercase tracking-wider text-dim">{label}</p>
-      <p className="mt-1 text-lg font-bold text-foreground">
+    <div className="rounded-sm border border-border bg-bg-elevated/60 px-4 py-3">
+      <p className="font-mono text-[9px] uppercase tracking-wider text-dim">{label}</p>
+      <p className="mt-1 font-mono text-lg font-bold text-foreground">
         {value}{" "}
         <span
           className={cn(
             "text-sm font-semibold",
-            highlight ? "text-neon-green" : "text-muted",
+            highlight ? "text-neon-cyan" : "text-muted",
           )}
         >
           {tag}

@@ -50,7 +50,7 @@ export function ensureMarketPollerStarted() {
 
   const sec = Math.round(pollIntervalMs() / 1000);
   logger.info(
-    `CoinGecko fetch every ${sec}s → saved in memory. UI updates when new prices land (SSE, not timed polling).`,
+    `CoinGecko: 1 call every ${sec}s (top 100) → memory cache. UI reads cache via /api/prices (SSE).`,
   );
 
   void runPollCycle();

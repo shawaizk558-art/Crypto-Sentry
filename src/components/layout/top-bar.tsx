@@ -1,45 +1,56 @@
 "use client";
 
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Search } from "lucide-react";
-import { useSession } from "next-auth/react";
 
-export function TopBar() {
-  const { data: session } = useSession();
-  const name = session?.user?.name ?? "Operative";
-  const initial = (name[0] ?? "?").toUpperCase();
+export function TopBar({
+  name,
+  avatarUrl,
+}: {
+  name: string;
+  avatarUrl: string | null;
+}) {
 
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-6 border-b border-border bg-bg-deep/80 px-8 py-4 backdrop-blur-md">
-      <div className="relative max-w-2xl flex-1">
+    <header className="sticky top-0 z-30 flex items-center gap-6 border-b border-border bg-bg-deep/70 px-6 py-3.5 backdrop-blur-xl md:px-8 lg:px-10">
+      <div className="relative max-w-xl flex-1">
         <Search
-          className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-dim"
+          className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-dim"
           strokeWidth={1.5}
         />
         <input
           type="search"
-          placeholder="Search Assets, Protocols or TX IDs..."
-          className="w-full rounded-full border border-border bg-bg-card py-2.5 pl-11 pr-4 text-sm text-foreground placeholder:text-dim transition-colors focus:border-neon-green/40 focus:outline-none focus:ring-1 focus:ring-neon-green/20"
+          placeholder="Search assets, protocols, TX IDs..."
+          className="cyber-input py-2.5 pl-10 pr-4"
         />
       </div>
 
-      <div className="ml-auto flex shrink-0 items-center gap-8">
-        <div className="hidden items-center gap-2 sm:flex">
+      <div className="ml-auto flex shrink-0 items-center gap-6">
+        <div className="hidden items-center gap-2.5 rounded-sm border border-border bg-bg-card/60 px-3 py-1.5 sm:flex">
           <span className="h-2 w-2 rounded-full bg-neon-green animate-pulse-dot" />
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted">
-            Network Status:
+          <span className="font-mono text-[9px] uppercase tracking-widest text-dim">
+            Net:
           </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-neon-green">
-            Mainnet Operational
+          <span className="font-mono text-[9px] font-semibold uppercase tracking-widest text-neon-green">
+            Online
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="hidden text-[10px] font-medium uppercase tracking-wider text-muted md:inline">
-            User Instance:
-          </span>
-          <span className="text-sm font-medium text-foreground">{name}</span>
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-neon-green/20 text-xs font-bold text-neon-green">
-            {initial}
+        <div className="flex items-center gap-3">
+          <div className="hidden text-right md:block">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-dim">
+              Operative
+            </p>
+            <p className="text-sm font-medium text-foreground">{name}</p>
+          </div>
+          <div className="relative">
+            <UserAvatar
+              src={avatarUrl}
+              name={name}
+              size="sm"
+              className="h-8 w-8 text-xs"
+            />
+            <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-bg-deep bg-neon-green" />
           </div>
         </div>
       </div>

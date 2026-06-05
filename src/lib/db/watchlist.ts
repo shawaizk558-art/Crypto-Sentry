@@ -32,15 +32,6 @@ export async function removeFromWatchlist(userId: string, assetId: string) {
   });
 }
 
-export async function getWatchlistAssetIds(userId: string) {
-  const rows = await prisma.watchlist.findMany({
-    where: { user_id: userId },
-    select: { asset_id: true },
-  });
-  return new Set(rows.map((r) => r.asset_id));
-}
-
-/** All unique asset IDs on any user's watchlist (for server-side price priority). */
 export async function getAllDistinctWatchlistAssetIds(): Promise<string[]> {
   const rows = await prisma.watchlist.findMany({
     select: { asset_id: true },

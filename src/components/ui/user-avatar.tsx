@@ -35,8 +35,8 @@ export function UserAvatar({
         unoptimized
         className={cn(
           dims.box,
-          "shrink-0 rounded-full object-cover",
-          className
+          "shrink-0 rounded-sm border border-neon-cyan/30 object-cover",
+          className,
         )}
       />
     );
@@ -46,9 +46,9 @@ export function UserAvatar({
     <div
       className={cn(
         dims.box,
-        "flex shrink-0 items-center justify-center rounded-full bg-neon-green/20 font-bold text-neon-green",
+        "flex shrink-0 items-center justify-center rounded-sm border border-neon-cyan/30 bg-neon-cyan/10 font-mono font-bold text-neon-cyan",
         dims.text,
-        className
+        className,
       )}
     >
       {initial}

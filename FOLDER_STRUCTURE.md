@@ -5,59 +5,42 @@ Quick map of the repo so you know where everything lives.
 ```
 Crypto Sentry/
 ├── prisma/                    # Database schema & migrations
-│   ├── schema.prisma          # User, Auth tables, Watchlist, CryptoAlert
+│   ├── schema.prisma          # CryptoAlert only (auth removed)
 │   └── migrations/            # SQL migration history
 │
 ├── src/
 │   ├── app/                   # Next.js App Router (pages & API)
 │   │   │
-│   │   ├── (app)/             # 🔒 Protected dashboard (requires login)
+│   │   ├── (app)/             # Dashboard (Supabase session required)
+│   │   ├── auth/              # Magic link login + callback
 │   │   │   ├── layout.tsx     # Sidebar + top bar
 │   │   │   ├── page.tsx       # Home / Terminal One
 │   │   │   ├── alerts/
 │   │   │   ├── watchlist/
 │   │   │   ├── market/
 │   │   │   ├── profile/
-│   │   │   └── settings/      # Includes “Enable 2FA” link
-│   │   │
-│   │   ├── auth/              # 🌐 Public auth pages (no dashboard chrome)
-│   │   │   ├── layout.tsx
-│   │   │   ├── login/         # Email/password + Google
-│   │   │   ├── signup/        # Register + Google
-│   │   │   └── 2fa/
-│   │   │       ├── verify/    # Enter TOTP after login
-│   │   │       └── setup/     # Scan QR & enable 2FA
+│   │   │   └── settings/      # Local browser preferences
 │   │   │
 │   │   ├── api/               # Backend HTTP handlers
-│   │   │   └── auth/
-│   │   │       ├── [...nextauth]/   # Auth.js (Google + credentials)
-│   │   │       ├── register/          # Email signup
-│   │   │       ├── validate-credentials/
-│   │   │       └── 2fa/
-│   │   │           ├── verify/        # Check TOTP code
-│   │   │           └── setup/         # Generate QR & save 2FA
 │   │   │   ├── market/              # GET cached top-100 coins
 │   │   │   ├── prices/              # Dashboard alias → same cache
 │   │   │   ├── market/status/       # Health + optional logs (?logs=1)
 │   │   │   └── alerts/              # Flash-crash rows from DB
 │   │   │
-│   │   ├── login/             # Redirect → /auth/login
-│   │   ├── signup/            # Redirect → /auth/signup
-│   │   ├── layout.tsx         # Root layout + session provider
+│   │   ├── layout.tsx         # Root layout
 │   │   └── globals.css        # Theme tokens & utilities
 │   │
 │   ├── components/
-│   │   ├── auth/              # Login/signup/2FA UI
 │   │   ├── dashboard/         # Home terminal widgets
 │   │   ├── layout/            # Sidebar, top bar
 │   │   ├── charts/            # Sparklines
 │   │   ├── alerts/            # Alert cards
 │   │   ├── watchlist/         # Watchlist table
 │   │   ├── ui/                # Buttons, cards, badges
-│   │   └── providers/         # SessionProvider wrapper
 │   │
 │   ├── lib/
-│   │   ├── auth/              # Auth.js config, TOTP, passwords
+│   │   ├── supabase/          # Supabase SSR clients + middleware session
+│   │   ├── db/watchlist.ts    # Per-user watchlist (Supabase user id)
 │   │   │   ├── index.ts       # handlers, auth, signIn, signOut
 │   │   │   ├── config.ts      # Providers & callbacks
 │   │   │   ├── totp.ts        # 2FA encrypt/verify
