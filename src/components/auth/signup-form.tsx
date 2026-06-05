@@ -1,31 +1,25 @@
 "use client";
 
 import { AuthField } from "@/components/auth/auth-field";
-import { EmailVerifyForm } from "@/components/auth/email-verify-form";
 import {
   AuthFooterLink,
   AuthOrDivider,
 } from "@/components/auth/auth-split-layout";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
-import { EMAIL_VERIFIED_METADATA_KEY } from "@/lib/auth/email-verified";
-import { createClient } from "@/lib/supabase/client";
 import { ArrowRight, Lock, Mail } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
-type SignupStep = "credentials" | "verify";
-
 function SignupFormInner() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
 
-  const [step, setStep] = useState<SignupStep>("credentials");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [codeSent, setCodeSent] = useState(false);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
@@ -45,61 +39,28 @@ function SignupFormInner() {
 
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: signUpError } = await supabase.auth.signUp({
-      email: trimmedEmail,
-      password,
-      options: {
-        data: { [EMAIL_VERIFIED_METADATA_KEY]: false },
-      },
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: trimmedEmail, password }),
     });
 
-    if (signUpError) {
-      setLoading(false);
-      setFormError(signUpError.message);
-      return;
-    }
-
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: trimmedEmail,
-      options: { shouldCreateUser: false },
-    });
-
+    const data = await res.json();
     setLoading(false);
 
-    if (otpError) {
-      setFormError(otpError.message);
+    if (!res.ok) {
+      setFormError(data.error ?? "Could not create account.");
       return;
     }
 
-    setEmail(trimmedEmail);
-    setCodeSent(true);
-    setStep("verify");
-  }
-
-  if (step === "verify") {
-    return (
-      <>
-        <EmailVerifyForm email={email} initialSent={codeSent} />
-        <button
-          type="button"
-          onClick={() => {
-            setStep("credentials");
-            setCodeSent(false);
-            setFormError(null);
-          }}
-          className="mt-4 w-full text-center text-xs text-muted hover:text-foreground"
-        >
-          ← Back to account details
-        </button>
-      </>
-    );
+    router.push("/auth/login?registered=1");
+    router.refresh();
   }
 
   return (
     <>
       <div className="space-y-4">
-        {error === "callback" && (
+        {(error === "callback" || error === "OAuthAccountNotLinked") && (
           <p className="rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
             Google sign-up failed. Try again.
           </p>

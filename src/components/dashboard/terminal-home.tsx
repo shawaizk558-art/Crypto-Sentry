@@ -189,7 +189,7 @@ export function TerminalHome() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12">
-        <div className="card-surface p-5 xl:col-span-3">
+        <div className="card-surface p-5 xl:col-span-3" data-tour="market-overview">
           <p className="data-label mb-4">Market Overview</p>
           <div className="space-y-4">
             <OverviewStat
@@ -224,6 +224,7 @@ export function TerminalHome() {
               key={asset.id}
               asset={asset}
               pulse={pricePulse && asset.id === "bitcoin"}
+              tourTarget={asset.id === "bitcoin"}
             />
           ))
         )}
@@ -359,6 +360,7 @@ function OverviewStat({
 function AssetPriceCard({
   asset,
   pulse,
+  tourTarget,
 }: {
   asset: {
     id: string;
@@ -371,11 +373,13 @@ function AssetPriceCard({
     sparkline: number[];
   };
   pulse?: boolean;
+  tourTarget?: boolean;
 }) {
   const negative = asset.change24h < 0;
 
   return (
     <div
+      data-tour={tourTarget ? "price-surveillance" : undefined}
       className={cn(
         "card-surface min-h-[228px] p-6 xl:col-span-3 transition-all",
         pulse && "card-glow-cyan ring-1 ring-neon-cyan/40",

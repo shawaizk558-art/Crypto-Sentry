@@ -1,8 +1,8 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
+import { signIn } from "next-auth/react";
 import { useState } from "react";
 
 type GoogleSignInButtonProps = {
@@ -21,33 +21,12 @@ export function GoogleSignInButton({
     setLoading(true);
     setError(null);
 
-    const supabase = createClient();
-    const redirectTo = `${window.location.origin}/auth/callback`;
-
-    const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-        queryParams: {
-          access_type: "online",
-          prompt: "select_account",
-        },
-      },
-    });
-
-    if (oauthError) {
-      setError(oauthError.message);
+    try {
+      await signIn("google", { callbackUrl: "/" });
+    } catch {
+      setError("Could not start Google sign-in.");
       setLoading(false);
-      return;
     }
-
-    if (data.url) {
-      window.location.href = data.url;
-      return;
-    }
-
-    setError("Could not start Google sign-in.");
-    setLoading(false);
   }
 
   const isPrimary = variant === "primary";

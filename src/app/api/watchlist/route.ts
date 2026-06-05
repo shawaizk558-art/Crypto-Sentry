@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMarketData } from "@/lib/coingecko";
 import { addToWatchlist, getUserWatchlist } from "@/lib/db/watchlist";
-import { getSessionUser } from "@/lib/supabase/session";
+import { getSessionUser } from "@/lib/auth/session";
 
 export async function GET() {
   const user = await getSessionUser();

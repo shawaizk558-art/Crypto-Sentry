@@ -3,8 +3,6 @@
 import { OperativePageHeader } from "@/components/layout/operative-page-header";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { AVATAR_BUCKET } from "@/lib/auth/profile";
-import { createClient } from "@/lib/supabase/client";
 import {
   Activity,
   Camera,
@@ -35,7 +33,6 @@ export function ProfileView({
   email,
   name: initialName,
   avatarUrl: initialAvatarUrl,
-  userId,
   createdAt,
 }: ProfileViewProps) {
   const router = useRouter();
@@ -69,15 +66,17 @@ export function ProfileView({
     setSavingName(true);
     setError(null);
 
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({
-      data: { full_name: trimmed },
+    const res = await fetch("/api/user/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: trimmed }),
     });
 
+    const data = await res.json();
     setSavingName(false);
 
-    if (updateError) {
-      setError(updateError.message);
+    if (!res.ok) {
+      setError(data.error ?? "Could not update name.");
       return;
     }
 
@@ -99,42 +98,23 @@ export function ProfileView({
     setUploadingAvatar(true);
     setError(null);
 
-    const supabase = createClient();
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const filePath = `${userId}/avatar.${ext}`;
+    const form = new FormData();
+    form.append("file", file);
 
-    const { error: uploadError } = await supabase.storage
-      .from(AVATAR_BUCKET)
-      .upload(filePath, file, { upsert: true, contentType: file.type });
-
-    if (uploadError) {
-      setUploadingAvatar(false);
-      setError(
-        uploadError.message.includes("Bucket not found")
-          ? "Avatar storage is not set up yet. Run supabase/avatars-bucket.sql in your Supabase project."
-          : uploadError.message,
-      );
-      return;
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(filePath);
-
-    const cacheBustedUrl = `${publicUrl}?t=${Date.now()}`;
-
-    const { error: updateError } = await supabase.auth.updateUser({
-      data: { avatar_url: cacheBustedUrl },
+    const res = await fetch("/api/user/avatar", {
+      method: "POST",
+      body: form,
     });
 
+    const data = await res.json();
     setUploadingAvatar(false);
 
-    if (updateError) {
-      setError(updateError.message);
+    if (!res.ok) {
+      setError(data.error ?? "Could not upload photo.");
       return;
     }
 
-    setAvatarUrl(cacheBustedUrl);
+    setAvatarUrl(data.imageUrl);
     router.refresh();
   }
 
@@ -143,7 +123,7 @@ export function ProfileView({
       <OperativePageHeader
         icon={User}
         title="Operative Profile"
-        subtitle="Google sign-in + email verification"
+        subtitle="Email, password, or Google sign-in"
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -261,7 +241,7 @@ export function ProfileView({
           <InfoCard
             icon={Shield}
             title="Security"
-            detail="Google OAuth + Gmail code"
+            detail="Google OAuth or email + password"
             accent="cyan"
           />
           <InfoCard

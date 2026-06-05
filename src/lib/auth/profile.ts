@@ -1,16 +1,9 @@
-import type { User } from "@supabase/supabase-js";
+import type { SessionUser } from "@/types/auth";
 
-export const AVATAR_BUCKET = "avatars";
-
-export function getProfileName(user: User): string {
-  return (
-    (user.user_metadata?.full_name as string | undefined) ??
-    user.email?.split("@")[0] ??
-    "Operative"
-  );
+export function getProfileName(user: SessionUser): string {
+  return user.name ?? user.email.split("@")[0] ?? "Operative";
 }
 
-export function getProfileAvatarUrl(user: User): string | null {
-  const url = user.user_metadata?.avatar_url;
-  return typeof url === "string" && url.length > 0 ? url : null;
+export function getProfileAvatarUrl(user: SessionUser): string | null {
+  return user.image && user.image.length > 0 ? user.image : null;
 }

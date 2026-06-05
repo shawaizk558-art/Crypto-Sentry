@@ -12,7 +12,7 @@ export function TopBar({
 }) {
 
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-6 border-b border-border bg-bg-deep/70 px-6 py-3.5 backdrop-blur-xl md:px-8 lg:px-10">
+    <header className="density-topbar sticky top-0 z-30 flex items-center gap-6 border-b border-border bg-bg-deep/70 backdrop-blur-xl">
       <div className="relative max-w-xl flex-1">
         <Search
           className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-dim"

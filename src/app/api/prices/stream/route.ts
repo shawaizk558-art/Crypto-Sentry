@@ -1,7 +1,7 @@
 import { getCacheVersion, subscribePriceUpdates } from "@/lib/market/cache-events";
 import { getMarketSnapshot } from "@/lib/market/memory-cache";
 import { ensureMarketPollerStarted } from "@/lib/market/poller";
-import { getSessionUser } from "@/lib/supabase/session";
+import { getSessionUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 

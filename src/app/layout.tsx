@@ -1,3 +1,4 @@
+import { AuthSessionProvider } from "@/components/providers/session-provider";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Orbitron } from "next/font/google";
 import "./globals.css";
@@ -36,7 +37,9 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${jetbrains.variable} ${orbitron.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <AuthSessionProvider>{children}</AuthSessionProvider>
+      </body>
     </html>
   );
 }

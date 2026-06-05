@@ -3,8 +3,8 @@
 import { AuthField } from "@/components/auth/auth-field";
 import { AuthFooterLink, AuthOrDivider } from "@/components/auth/auth-split-layout";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
-import { createClient } from "@/lib/supabase/client";
 import { ArrowRight, Lock, Mail } from "lucide-react";
+import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
@@ -13,6 +13,7 @@ function LoginFormInner() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/";
   const error = searchParams.get("error");
+  const registered = searchParams.get("registered") === "1";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,33 +21,27 @@ function LoginFormInner() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const callbackError =
-    error === "callback"
-      ? "Sign-in failed. Try again."
-      : error === "no-email"
-        ? "No email on this account."
-        : error
-          ? "Sign-in failed. Try again."
-          : null;
+    error === "CredentialsSignin" || error === "callback"
+      ? "Invalid email or password."
+      : error
+        ? "Sign-in failed. Try again."
+        : null;
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setFormError(null);
 
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const result = await signIn("credentials", {
       email: email.trim(),
       password,
+      redirect: false,
     });
 
     setLoading(false);
 
-    if (signInError) {
-      setFormError(
-        signInError.message === "Invalid login credentials"
-          ? "Invalid email or password."
-          : signInError.message,
-      );
+    if (result?.error) {
+      setFormError("Invalid email or password.");
       return;
     }
 
@@ -56,6 +51,12 @@ function LoginFormInner() {
 
   return (
     <div className="space-y-4">
+      {registered && (
+        <p className="rounded-sm border border-neon-green/40 bg-neon-green/10 px-3 py-2 text-sm text-neon-green">
+          Account created. Sign in to continue.
+        </p>
+      )}
+
       {(callbackError || formError) && (
         <p className="rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {formError ?? callbackError}

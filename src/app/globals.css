@@ -38,6 +38,42 @@
 
   html {
     color-scheme: dark;
+    --density-sidebar: 240px;
+    --density-page-px: 1.5rem;
+    --density-page-py: 2rem;
+    --density-grid-gap: 1rem;
+    --density-card-p: 1.25rem;
+    --density-title: 1.875rem;
+    --density-price: 1.5rem;
+    --density-section-mb: 2rem;
+    --density-topbar-py: 0.875rem;
+    --density-topbar-px: 1.5rem;
+  }
+
+  html[data-ui-density="expanded"] {
+    --density-sidebar: 280px;
+    --density-page-px: 3rem;
+    --density-page-py: 2.75rem;
+    --density-grid-gap: 1.75rem;
+    --density-card-p: 2rem;
+    --density-title: 2.5rem;
+    --density-price: 2.25rem;
+    --density-section-mb: 3rem;
+    --density-topbar-py: 1.125rem;
+    --density-topbar-px: 3rem;
+  }
+
+  html[data-ui-density="compact"] {
+    --density-sidebar: 220px;
+    --density-page-px: 1.25rem;
+    --density-page-py: 1.5rem;
+    --density-grid-gap: 0.75rem;
+    --density-card-p: 1rem;
+    --density-title: 1.5rem;
+    --density-price: 1.25rem;
+    --density-section-mb: 1.5rem;
+    --density-topbar-py: 0.625rem;
+    --density-topbar-px: 1.25rem;
   }
 
   body {
@@ -192,12 +228,84 @@
     filter: brightness(1.05);
   }
 
+  .app-shell {
+    padding-left: var(--density-sidebar);
+    transition: padding-left 0.2s ease;
+  }
+
+  .density-sidebar {
+    width: var(--density-sidebar);
+    transition: width 0.2s ease;
+  }
+
+  .density-topbar {
+    padding: var(--density-topbar-py) var(--density-topbar-px);
+    transition: padding 0.2s ease;
+  }
+
   .page-container {
-    @apply px-6 py-8 md:px-8 lg:px-10;
+    padding: var(--density-page-py) var(--density-page-px);
+    transition: padding 0.2s ease;
   }
 
   .data-label {
     @apply font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted;
+  }
+
+  html[data-ui-density="expanded"] .data-label {
+    @apply text-[11px] tracking-[0.25em];
+  }
+
+  html[data-ui-density="expanded"] main .card-surface {
+    padding: var(--density-card-p) !important;
+  }
+
+  html[data-ui-density="expanded"] main .grid {
+    gap: var(--density-grid-gap) !important;
+  }
+
+  html[data-ui-density="expanded"] main h1.font-display {
+    font-size: var(--density-title) !important;
+    line-height: 1.15;
+  }
+
+  @media (min-width: 768px) {
+    html[data-ui-density="expanded"] main h1.font-display {
+      font-size: 3rem !important;
+    }
+  }
+
+  html[data-ui-density="expanded"] main .font-mono.text-2xl {
+    font-size: var(--density-price) !important;
+  }
+
+  html[data-ui-density="expanded"] main .font-display.text-3xl {
+    font-size: 2.25rem !important;
+  }
+
+  html[data-ui-density="expanded"] main .mb-8 {
+    margin-bottom: var(--density-section-mb) !important;
+  }
+
+  html[data-ui-density="compact"] main .card-surface {
+    padding: var(--density-card-p) !important;
+  }
+
+  html[data-ui-density="compact"] main .grid {
+    gap: var(--density-grid-gap) !important;
+  }
+
+  html[data-ui-density="compact"] main h1.font-display {
+    font-size: var(--density-title) !important;
+    line-height: 1.2;
+  }
+
+  html[data-ui-density="compact"] main .font-mono.text-2xl {
+    font-size: var(--density-price) !important;
+  }
+
+  html[data-ui-density="compact"] main .mb-8 {
+    margin-bottom: var(--density-section-mb) !important;
   }
 
   .animate-pulse-dot {

@@ -41,7 +41,7 @@ export function Sidebar({ user }: { user: SidebarUser | null }) {
   }
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-[240px] flex-col border-r border-border bg-bg-panel/90 backdrop-blur-xl">
+    <aside className="density-sidebar fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-border bg-bg-panel/90 backdrop-blur-xl">
       <div
         className="absolute right-0 top-0 h-24 w-px"
         style={{
@@ -50,7 +50,7 @@ export function Sidebar({ user }: { user: SidebarUser | null }) {
         }}
       />
 
-      <div className="flex items-center gap-3 px-5 py-6">
+      <div data-tour="sentry-brand" className="relative flex items-center gap-3 px-5 py-6">
         <div className="relative flex h-10 w-10 items-center justify-center rounded-sm border border-neon-cyan/30 bg-neon-cyan/10">
           <Shield className="h-5 w-5 text-neon-cyan cyan-glow" strokeWidth={2} />
           <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-neon-magenta animate-pulse-dot" />
@@ -73,12 +73,21 @@ export function Sidebar({ user }: { user: SidebarUser | null }) {
         </p>
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
+          const tourId =
+            href === "/market"
+              ? "nav-market"
+              : href === "/watchlist"
+                ? "nav-watchlist"
+                : href === "/alerts"
+                  ? "nav-alerts"
+                  : undefined;
           return (
             <Link
               key={href}
               href={href}
+              data-tour={tourId}
               className={cn(
-                "group flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm transition-all",
+                "group relative flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm transition-all",
                 active
                   ? "nav-active font-medium text-neon-cyan"
                   : "text-muted hover:bg-bg-elevated/60 hover:text-foreground",
@@ -102,7 +111,10 @@ export function Sidebar({ user }: { user: SidebarUser | null }) {
 
       <div className="border-t border-border p-4">
         {user ? (
-          <div className="card-surface flex items-center gap-3 px-3 py-3">
+          <div
+            data-tour="sidebar-profile"
+            className="card-surface relative flex items-center gap-3 px-3 py-3"
+          >
             <UserAvatar
               src={user.avatarUrl}
               name={user.name}
