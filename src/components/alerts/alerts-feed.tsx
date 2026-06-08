@@ -6,34 +6,19 @@ import { PageHeader } from "@/components/layout/header";
 import { Panel, PanelHeader } from "@/components/ui/card";
 import { liveMarketFetchInit } from "@/lib/coingecko-client";
 import { useLivePrices } from "@/hooks/use-live-prices";
-import type { AlertSeverity } from "@/types/alerts";
+import type { CryptoAlertItem } from "@/types/alerts";
 import { AlertOctagon, Filter, TrendingDown } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-type AlertLogEntry = {
-  alertId: string;
-  line: string;
-  dropPct: number;
-};
-
-// How bad was the drop? critical, high, or medium.
-function severityForDrop(drop: number): AlertSeverity {
-  if (drop <= -8) return "critical";
-  if (drop <= -5) return "high";
-  return "medium";
-}
-
-// Alerts page: stats + list of triggered alerts.
 export function AlertsFeed() {
   const { meta } = useLivePrices();
-  const [logs, setLogs] = useState<AlertLogEntry[]>([]);
+  const [alerts, setAlerts] = useState<CryptoAlertItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load alert logs from the server.
   const load = useCallback(async () => {
-    const res = await fetch("/api/alerts/logs?limit=50", liveMarketFetchInit);
+    const res = await fetch("/api/alerts?limit=50", liveMarketFetchInit);
     const data = await res.json();
-    setLogs(data.logs ?? []);
+    setAlerts(data.alerts ?? []);
     setLoading(false);
   }, []);
 
@@ -45,14 +30,14 @@ export function AlertsFeed() {
     if (meta?.updatedAt) void load();
   }, [meta?.updatedAt, load]);
 
-  const critical = logs.filter((entry) => severityForDrop(entry.dropPct) === "critical").length;
-  const high = logs.filter((entry) => severityForDrop(entry.dropPct) === "high").length;
+  const critical = alerts.filter((a) => a.severity === "critical").length;
+  const high = alerts.filter((a) => a.severity === "high").length;
 
   return (
     <div className="page-container">
       <PageHeader
         title="Alert Log"
-        description="Flash-crash audit trail — structured ALERT_TRIGGERED entries, separate from system logs."
+        description="Live flash-crash detections from the in-process surveillance poller (30s cycles)."
         action={
           <button
             type="button"
@@ -67,7 +52,7 @@ export function AlertsFeed() {
       <section className="mb-8 grid gap-4 sm:grid-cols-3">
         <StatCard
           label="Total alerts"
-          value={loading ? "…" : logs.length}
+          value={loading ? "…" : alerts.length}
           icon={TrendingDown}
           variant="cyan"
         />
@@ -87,17 +72,17 @@ export function AlertsFeed() {
 
       <Panel urgent>
         <PanelHeader
-          title="Alert log stream"
-          subtitle="[timestamp] ALERT_TRIGGERED | Asset | Price | Drop | AlertID"
+          title="All detected drops"
+          subtitle="Sorted by detection time — newest first"
         />
         <div>
           {loading ? (
-            <p className="px-5 py-8 font-mono text-sm text-muted">Loading alert logs…</p>
-          ) : logs.length === 0 ? (
-            <p className="px-5 py-8 text-sm italic text-dim">No alert log entries yet</p>
+            <p className="px-5 py-8 font-mono text-sm text-muted">Loading alerts…</p>
+          ) : alerts.length === 0 ? (
+            <p className="px-5 py-8 text-sm italic text-dim">No drops detected yet</p>
           ) : (
-            logs.map((entry, i) => (
-              <AlertCard key={entry.alertId} entry={entry} index={i} />
+            alerts.map((alert, i) => (
+              <AlertCard key={alert.id} alert={alert} index={i} />
             ))
           )}
         </div>
