@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
 type UserAvatarProps = {
   src?: string | null;
@@ -23,10 +26,12 @@ export function UserAvatar({
   size = "sm",
   className,
 }: UserAvatarProps) {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [src]);
   const initial = (name?.[0] ?? email?.[0] ?? "?").toUpperCase();
   const dims = sizeMap[size];
 
-  if (src) {
+  if (src && !broken) {
     return (
       <Image
         src={src}
@@ -34,6 +39,7 @@ export function UserAvatar({
         width={size === "sm" ? 36 : size === "md" ? 112 : 128}
         height={size === "sm" ? 36 : size === "md" ? 112 : 128}
         unoptimized
+        onError={() => setBroken(true)}
         className={cn(
           dims.box,
           "shrink-0 rounded-sm border border-neon-cyan/30 object-cover",

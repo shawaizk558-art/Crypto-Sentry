@@ -1,11 +1,20 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { requireSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import {
+  uploadAvatarToLocal,
+  uploadAvatarToStorage,
+} from "@/lib/storage/avatars";
 import { NextResponse } from "next/server";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 const ACCEPTED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+function hasSupabaseStorage() {
+  const url =
+    process.env.SUPABASE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  return Boolean(url && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+}
 
 // Uploads and saves a new avatar image for the authenticated user.
 export async function POST(request: Request) {
@@ -27,15 +36,12 @@ export async function POST(request: Request) {
     }
 
     const ext = file.type.split("/")[1]?.replace("jpeg", "jpg") ?? "jpg";
-    const dir = path.join(process.cwd(), "public", "uploads", "avatars");
-    await mkdir(dir, { recursive: true });
-
-    const filename = `${user.id}.${ext}`;
-    const filepath = path.join(dir, filename);
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filepath, buffer);
 
-    const imageUrl = `/uploads/avatars/${filename}?t=${Date.now()}`;
+    const imageUrl =
+      hasSupabaseStorage() || process.env.NODE_ENV === "production"
+        ? await uploadAvatarToStorage(user.id, buffer, file.type, ext)
+        : await uploadAvatarToLocal(user.id, buffer, ext);
 
     await prisma.user.update({
       where: { id: user.id },
@@ -47,6 +53,7 @@ export async function POST(request: Request) {
     if (err instanceof Error && err.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    console.error("[POST /api/user/avatar]", err);
     return NextResponse.json({ error: "Could not upload avatar." }, { status: 500 });
   }
 }

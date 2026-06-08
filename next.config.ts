@@ -4,6 +4,25 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
+function supabaseImagePattern() {
+  const raw =
+    process.env.SUPABASE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!raw) return null;
+  try {
+    const { hostname } = new URL(raw);
+    return {
+      protocol: "https" as const,
+      hostname,
+      pathname: "/storage/v1/object/public/**",
+    };
+  } catch {
+    return null;
+  }
+}
+
+const supabasePattern = supabaseImagePattern();
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: projectRoot,
@@ -17,6 +36,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "assets.coingecko.com", pathname: "/**" },
       { protocol: "https", hostname: "coin-images.coingecko.com", pathname: "/**" },
       { protocol: "https", hostname: "lh3.googleusercontent.com", pathname: "/**" },
+      ...(supabasePattern ? [supabasePattern] : []),
     ],
   },
 };

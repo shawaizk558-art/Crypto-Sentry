@@ -1,4 +1,5 @@
 import type { SessionUser } from "@/types/auth";
+import { resolveAvatarUrl } from "@/lib/storage/avatars";
 
 // Name to show on screen (from name or email).
 export function getProfileName(user: SessionUser): string {
@@ -7,5 +8,5 @@ export function getProfileName(user: SessionUser): string {
 
 // Profile picture URL, or null if none uploaded.
 export function getProfileAvatarUrl(user: SessionUser): string | null {
-  return user.image && user.image.length > 0 ? user.image : null;
+  return resolveAvatarUrl(user.image);
 }
