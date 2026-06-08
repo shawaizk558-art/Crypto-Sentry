@@ -41,3 +41,13 @@ export async function requireSessionUser(): Promise<SessionUser> {
   }
   return user;
 }
+
+// JWT-only auth check — no database round-trip (use for read-only routes).
+export async function requireAuth(): Promise<{ id: string }> {
+  const session = await auth();
+  const id = session?.user?.id;
+  if (!id) {
+    throw new Error("Unauthorized");
+  }
+  return { id };
+}

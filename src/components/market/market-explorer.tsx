@@ -11,6 +11,7 @@ import { PriceChangeCell } from "@/components/ui/price-change";
 import { cn } from "@/lib/utils";
 import { AlertCircle, BarChart3, Search, Star } from "lucide-react";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Coin = {
@@ -27,10 +28,16 @@ type Coin = {
 
 // Searchable table of top coins with watchlist toggle actions.
 export function MarketExplorer() {
+  const searchParams = useSearchParams();
   const { coins, meta, loading } = useLivePrices();
   const [watchIds, setWatchIds] = useState<Set<string>>(new Set());
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const [stale, setStale] = useState(false);
+
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q) setQuery(q);
+  }, [searchParams]);
 
   // Loads the user's watchlist IDs for star toggle state.
   const loadWatchlist = useCallback(async () => {

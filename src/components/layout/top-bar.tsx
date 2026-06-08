@@ -1,7 +1,7 @@
 "use client";
 
+import { GlobalSearch } from "@/components/layout/global-search";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { Search } from "lucide-react";
 
 // Sticky header with search, network status, and user avatar.
 export function TopBar({
@@ -14,17 +14,7 @@ export function TopBar({
 
   return (
     <header className="density-topbar sticky top-0 z-30 flex items-center gap-6 border-b border-border bg-bg-deep/70 backdrop-blur-xl">
-      <div className="relative max-w-xl flex-1">
-        <Search
-          className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-dim"
-          strokeWidth={1.5}
-        />
-        <input
-          type="search"
-          placeholder="Search assets, protocols, TX IDs..."
-          className="cyber-input py-2.5 pl-10 pr-4"
-        />
-      </div>
+      <GlobalSearch />
 
       <div className="ml-auto flex shrink-0 items-center gap-6">
         <div className="hidden items-center gap-2.5 rounded-sm border border-border bg-bg-card/60 px-3 py-1.5 sm:flex">

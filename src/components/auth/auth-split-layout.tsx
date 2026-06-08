@@ -82,7 +82,7 @@ export function AuthSplitLayout({
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">
             Every new operative strengthens the Crypto Sentry surveillance network.
-            Sign in with email or Google — email signups verify with a one-time code.
+            Sign in with email or Google.
           </p>
           <div className="mt-4 flex gap-4">
             <div className="flex items-center gap-2">

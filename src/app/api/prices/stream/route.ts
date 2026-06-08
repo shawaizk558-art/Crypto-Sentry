@@ -1,7 +1,7 @@
 import { getCacheVersion, subscribePriceUpdates } from "@/lib/market/cache-events";
 import { getMarketSnapshot } from "@/lib/market/memory-cache";
 import { ensureMarketPollerStarted } from "@/lib/market/poller";
-import { getSessionUser } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +11,9 @@ export const dynamic = "force-dynamic";
  */
 // API: live stream that pings browser when prices update.
 export async function GET(request: Request) {
-  const user = await getSessionUser();
-  if (!user) {
+  try {
+    await requireAuth();
+  } catch {
     return new Response("Unauthorized", { status: 401 });
   }
 
