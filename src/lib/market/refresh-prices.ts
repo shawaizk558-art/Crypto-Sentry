@@ -16,10 +16,12 @@ type RefreshGlobals = typeof globalThis & {
   __priceRefreshInFlight?: Promise<void>;
 };
 
+// Shared flag so two fetches don't run at the same time.
 function refreshGlobal() {
   return globalThis as RefreshGlobals;
 }
 
+// Prices from last time — compare to spot sudden drops.
 function getPreviousBaseline() {
   const g = globalThis as typeof globalThis & {
     __marketPreviousBaseline?: Map<string, number>;
@@ -30,6 +32,7 @@ function getPreviousBaseline() {
   return g.__marketPreviousBaseline;
 }
 
+// Get new prices from CoinGecko, check for crashes, save to memory.
 async function applyPriceRefresh() {
   const snapshot = getMarketSnapshot();
 
@@ -86,6 +89,7 @@ async function applyPriceRefresh() {
   return { coinCount: nextCoins.length, alertsCreated: alerts, skipped: false };
 }
 
+// Fetch prices. If already fetching, wait for that one to finish.
 export async function refreshPricesFromApi(): Promise<void> {
   const g = refreshGlobal();
   if (g.__priceRefreshInFlight) {

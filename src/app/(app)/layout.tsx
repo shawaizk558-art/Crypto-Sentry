@@ -7,6 +7,7 @@ import { getProfileAvatarUrl, getProfileName } from "@/lib/auth/profile";
 import { getSessionUser } from "@/lib/auth/session";
 import { getOrCreateUserSettings } from "@/lib/user/settings";
 
+// Authenticated app shell with sidebar, top bar, and onboarding.
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
 

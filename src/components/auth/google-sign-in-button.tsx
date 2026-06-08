@@ -10,6 +10,7 @@ type GoogleSignInButtonProps = {
   variant?: "outline" | "primary";
 };
 
+// Button that initiates Google OAuth sign-in via NextAuth.
 export function GoogleSignInButton({
   label = "Continue with Google",
   variant = "outline",
@@ -17,6 +18,7 @@ export function GoogleSignInButton({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Redirects the user to Google's OAuth consent screen.
   async function signInWithGoogle() {
     setLoading(true);
     setError(null);
@@ -57,6 +59,7 @@ export function GoogleSignInButton({
   );
 }
 
+// Renders the multicolor Google logo SVG.
 function GoogleIcon() {
   return (
     <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>

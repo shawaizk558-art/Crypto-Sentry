@@ -1,63 +1,52 @@
 import { SeverityBadge } from "@/components/ui/badge";
-import type { CryptoAlertItem } from "@/types/alerts";
-import { cn, formatPercent, formatUsd, timeAgo } from "@/lib/utils";
-import { TrendingDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { AlertSeverity } from "@/types/alerts";
 
+export type AlertLogLine = {
+  line: string;
+  dropPct: number;
+  severity?: AlertSeverity;
+};
+
+// How bad was the drop? critical, high, or medium.
+function severityForDrop(drop: number): AlertSeverity {
+  if (drop <= -8) return "critical";
+  if (drop <= -5) return "high";
+  return "medium";
+}
+
+// One alert row in the feed.
 export function AlertCard({
-  alert,
+  entry,
   index = 0,
 }: {
-  alert: CryptoAlertItem;
+  entry: AlertLogLine;
   index?: number;
 }) {
-  const isCritical = alert.severity === "critical";
-  const isHigh = alert.severity === "high";
+  const severity = entry.severity ?? severityForDrop(entry.dropPct);
+  const isCritical = severity === "critical";
+  const isHigh = severity === "high";
 
   return (
     <article
       className={cn(
-        "animate-slide-in group flex items-stretch gap-4 border-b border-border/60 px-5 py-4 transition-colors last:border-b-0 hover:bg-neon-cyan/[0.03]",
+        "animate-slide-in group border-b border-border/60 px-5 py-3 transition-colors last:border-b-0 hover:bg-neon-cyan/[0.03]",
         isCritical && "bg-danger/[0.04]",
         isHigh && "bg-neon-magenta/[0.03]",
       )}
       style={{ animationDelay: `${index * 60}ms` }}
     >
-      <div
-        className={cn(
-          "flex w-12 shrink-0 flex-col items-center justify-center rounded-sm border font-mono text-xs font-bold",
-          isCritical
-            ? "border-danger/50 bg-danger/10 text-danger"
-            : isHigh
-              ? "border-neon-magenta/40 bg-neon-magenta/10 text-neon-magenta"
-              : "border-neon-cyan/30 bg-neon-cyan/5 text-neon-cyan",
-        )}
-      >
-        {alert.symbol.slice(0, 3)}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-display text-sm font-semibold tracking-wide text-foreground">
-            {alert.assetName}
-          </h3>
-          <SeverityBadge severity={alert.severity} />
-          <span className="font-mono text-[10px] text-dim">
-            {timeAgo(new Date(alert.detectedAt))}
-          </span>
-        </div>
-        <p className="mt-1 font-mono text-xs text-muted">
-          Drop detected at {formatUsd(alert.priceAtDrop)}
+      <div className="flex flex-wrap items-center gap-3">
+        <p
+          className={cn(
+            "min-w-0 flex-1 font-mono text-xs leading-relaxed text-muted",
+            isCritical && "text-danger/90",
+            isHigh && "text-neon-magenta/90",
+          )}
+        >
+          {entry.line}
         </p>
-      </div>
-
-      <div className="flex shrink-0 flex-col items-end justify-center gap-1">
-        <div className="flex items-center gap-1 font-mono text-lg font-bold text-neon-magenta text-glow-magenta">
-          <TrendingDown className="h-4 w-4" strokeWidth={2} />
-          {formatPercent(alert.dropPercentage)}
-        </div>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-dim">
-          {alert.assetId}
-        </span>
+        <SeverityBadge severity={severity} />
       </div>
     </article>
   );

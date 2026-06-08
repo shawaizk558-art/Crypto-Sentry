@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db/prisma";
 
+// Get user's saved coins, newest first.
 export async function getUserWatchlist(userId: string) {
   return prisma.watchlist.findMany({
     where: { user_id: userId },
@@ -8,6 +9,7 @@ export async function getUserWatchlist(userId: string) {
   });
 }
 
+// Add a coin to user's watchlist.
 export async function addToWatchlist(
   userId: string,
   assetId: string,
@@ -26,12 +28,14 @@ export async function addToWatchlist(
   });
 }
 
+// Remove a coin from user's watchlist.
 export async function removeFromWatchlist(userId: string, assetId: string) {
   return prisma.watchlist.deleteMany({
     where: { user_id: userId, asset_id: assetId },
   });
 }
 
+// Get all coin IDs that anyone has on their watchlist.
 export async function getAllDistinctWatchlistAssetIds(): Promise<string[]> {
   const rows = await prisma.watchlist.findMany({
     select: { asset_id: true },

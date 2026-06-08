@@ -25,12 +25,14 @@ type Coin = {
   price_change_percentage_7d: number;
 };
 
+// Searchable table of top coins with watchlist toggle actions.
 export function MarketExplorer() {
   const { coins, meta, loading } = useLivePrices();
   const [watchIds, setWatchIds] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [stale, setStale] = useState(false);
 
+  // Loads the user's watchlist IDs for star toggle state.
   const loadWatchlist = useCallback(async () => {
     const res = await fetch("/api/watchlist", liveMarketFetchInit);
     const watch = await res.json();
@@ -59,6 +61,7 @@ export function MarketExplorer() {
     );
   }, [coins, query]);
 
+  // Adds or removes a coin from the user's watchlist.
   async function toggleWatch(coin: Coin) {
     if (watchIds.has(coin.id)) {
       await fetch(`/api/watchlist/${coin.id}`, { method: "DELETE" });
@@ -91,7 +94,7 @@ export function MarketExplorer() {
       <OperativePageHeader
         icon={BarChart3}
         title="Market Explorer"
-        subtitle="Top 100 by market cap · updates on server cache refresh (~30s)"
+        subtitle="Top 100 by market cap · updates on server cache refresh (~60s)"
       />
 
       <div className="relative mb-6 max-w-md">

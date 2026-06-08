@@ -1,3 +1,4 @@
+import { logAlertTriggered } from "@/lib/alert-logger";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/db/prisma";
 import type { MarketCoin } from "@/types/market";
@@ -7,11 +8,39 @@ const COOLDOWN_MS = 60_000;
 
 const lastAlertAt = new Map<string, number>();
 
+type UserThreshold = {
+  userId: string;
+  threshold: number;
+};
+
+// Get each user's "alert me if drop is worse than X%" setting.
+async function loadUserThresholds(): Promise<UserThreshold[]> {
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      settings: { select: { alert_threshold: true } },
+    },
+  });
+
+  return users.map((user) => ({
+    userId: user.id,
+    threshold: user.settings?.alert_threshold ?? DEFAULT_THRESHOLD,
+  }));
+}
+
+// Unique key so we don't fire the same alert twice in a row.
+function cooldownKey(userId: string, assetId: string) {
+  return `${userId}:${assetId}`;
+}
+
+// If a coin dropped too fast, create an alert for affected users.
 export async function detectFlashCrashes(
   current: MarketCoin[],
   baseline: Map<string, number>,
-  thresholdPercent = DEFAULT_THRESHOLD,
 ): Promise<number> {
+  const userThresholds = await loadUserThresholds();
+  if (userThresholds.length === 0) return 0;
+
   let created = 0;
   const now = Date.now();
 
@@ -20,30 +49,39 @@ export async function detectFlashCrashes(
     if (!prev || prev <= 0) continue;
 
     const dropPct = ((coin.current_price - prev) / prev) * 100;
-    if (dropPct > thresholdPercent) continue;
 
-    const last = lastAlertAt.get(coin.id) ?? 0;
-    if (now - last < COOLDOWN_MS) continue;
+    for (const { userId, threshold } of userThresholds) {
+      if (dropPct > threshold) continue;
 
-    try {
-      await prisma.cryptoAlert.create({
-        data: {
-          asset_id: coin.id,
-          asset_name: coin.name,
-          price_at_drop: coin.current_price,
-          drop_percentage: dropPct,
-        },
-      });
-      lastAlertAt.set(coin.id, now);
-      created += 1;
-      logger.info(
-        `ALERT: ${coin.name} fell ${Math.abs(dropPct).toFixed(2)}% to $${coin.current_price.toLocaleString("en-US", { maximumFractionDigits: 2 })}.`,
-      );
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      logger.error(
-        `Alert could not be saved for ${coin.name} at $${coin.current_price} — ${detail}`,
-      );
+      const key = cooldownKey(userId, coin.id);
+      const last = lastAlertAt.get(key) ?? 0;
+      if (now - last < COOLDOWN_MS) continue;
+
+      try {
+        const alert = await prisma.cryptoAlert.create({
+          data: {
+            user: { connect: { id: userId } },
+            asset_id: coin.id,
+            asset_name: coin.name,
+            asset_symbol: coin.symbol.toUpperCase(),
+            price_at_drop: coin.current_price,
+            drop_percentage: dropPct,
+          },
+        });
+        lastAlertAt.set(key, now);
+        created += 1;
+        logAlertTriggered({
+          alertId: alert.id,
+          asset: coin.symbol,
+          price: coin.current_price,
+          dropPct,
+        });
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        logger.error(
+          `Alert could not be saved for ${coin.name} (user ${userId}) at $${coin.current_price} — ${detail}`,
+        );
+      }
     }
   }
 

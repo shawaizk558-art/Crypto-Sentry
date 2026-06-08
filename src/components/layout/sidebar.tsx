@@ -30,10 +30,12 @@ type SidebarUser = {
   avatarUrl: string | null;
 };
 
+// Primary navigation sidebar with user profile and sign-out.
 export function Sidebar({ user }: { user: SidebarUser | null }) {
   const pathname = usePathname();
   const router = useRouter();
 
+  // Signs the user out and redirects to login.
   async function signOut() {
     await fetch("/auth/signout", { method: "POST" });
     router.push("/auth/login");

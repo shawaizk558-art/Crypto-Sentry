@@ -32,12 +32,14 @@ type MarketMeta = {
   clientPollIntervalMs?: number;
 };
 
+// Show total market cap, e.g. $2.5T.
 function formatMarketCapTotal(cap: number) {
   if (cap >= 1e12) return `$${(cap / 1e12).toFixed(2)}T`;
   if (cap >= 1e9) return `$${(cap / 1e9).toFixed(2)}B`;
   return `$${cap.toLocaleString()}`;
 }
 
+// Fake mini-chart points based on 24h change.
 function syntheticSparkline(change24h: number): number[] {
   const base = 50;
   const drift = Math.max(-15, Math.min(15, change24h));
@@ -47,6 +49,7 @@ function syntheticSparkline(change24h: number): number[] {
   });
 }
 
+// Home page: live BTC/ETH prices, market stats, alerts.
 export function TerminalHome() {
   const { coins, meta: liveMeta, loading, connected } = useLivePrices();
   const meta = liveMeta as MarketMeta | null;
@@ -55,6 +58,7 @@ export function TerminalHome() {
   const [pricePulse, setPricePulse] = useState(false);
   const prevBtcPrice = useRef<number | null>(null);
 
+  // Load recent alerts for the dashboard.
   const loadAlerts = useCallback(async () => {
     const res = await fetch("/api/alerts?limit=10", liveMarketFetchInit);
     const data = await res.json();
@@ -183,7 +187,7 @@ export function TerminalHome() {
         <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
           Real-time intelligence aggregate
           {meta && !loading
-            ? ` · ${meta.coinCount} assets · poll ${(meta.serverPollIntervalMs ?? 30000) / 1000}s${connected ? "" : " · connecting…"}${tickAgeSec !== null ? ` · data ${tickAgeSec}s old` : ""}`
+            ? ` · ${meta.coinCount} assets · poll ${(meta.serverPollIntervalMs ?? 60000) / 1000}s${connected ? "" : " · connecting…"}${tickAgeSec !== null ? ` · data ${tickAgeSec}s old` : ""}`
             : ""}
         </p>
       </div>
@@ -283,7 +287,7 @@ export function TerminalHome() {
             >
               {sentiment}
             </span>{" "}
-            bias. Server polls CoinGecko every 30s; this screen updates on new prices.
+            bias. Server polls CoinGecko every 60s; this screen updates on new prices.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <MetricPill
@@ -326,6 +330,7 @@ export function TerminalHome() {
   );
 }
 
+// One stat box with icon, label, and value.
 function OverviewStat({
   icon: Icon,
   label,
@@ -357,6 +362,7 @@ function OverviewStat({
   );
 }
 
+// Big price card for BTC or ETH.
 function AssetPriceCard({
   asset,
   pulse,
@@ -433,6 +439,7 @@ function AssetPriceCard({
   );
 }
 
+// Small labeled stat pill.
 function MetricPill({
   label,
   value,

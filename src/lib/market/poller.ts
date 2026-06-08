@@ -8,7 +8,7 @@ import { COINGECKO_POLL_MS } from "@/lib/market/constants";
 import { refreshPricesFromApi } from "@/lib/market/refresh-prices";
 import type { MarketCacheSnapshot } from "@/types/market";
 
-const MIN_POLL_MS = 30_000;
+const MIN_POLL_MS = 60_000;
 
 type PollerGlobals = typeof globalThis & {
   __marketPollerStarted?: boolean;
@@ -16,16 +16,19 @@ type PollerGlobals = typeof globalThis & {
   __marketPollIntervalId?: ReturnType<typeof setInterval>;
 };
 
+// Shared flags so we only run one price fetcher at a time.
 function pollerGlobal() {
   return globalThis as PollerGlobals;
 }
 
+// How many ms between fetches (from .env or 60s default).
 function pollIntervalMs() {
   const raw = process.env.MARKET_POLL_INTERVAL_MS;
   const parsed = raw ? Number.parseInt(raw, 10) : COINGECKO_POLL_MS;
   return Number.isFinite(parsed) && parsed >= MIN_POLL_MS ? parsed : COINGECKO_POLL_MS;
 }
 
+// Fetch prices once. Skip if a fetch is already running.
 export async function runPollCycle() {
   const g = pollerGlobal();
   if (g.__marketPollInFlight) {
@@ -43,6 +46,7 @@ export async function runPollCycle() {
   }
 }
 
+// Start fetching prices from CoinGecko every ~60 seconds.
 export function ensureMarketPollerStarted() {
   const g = pollerGlobal();
   if (g.__marketPollerStarted) return;
@@ -59,6 +63,7 @@ export function ensureMarketPollerStarted() {
   }, pollIntervalMs());
 }
 
+// Make sure prices are loaded before the UI needs them.
 export async function ensureMarketCacheWarm(): Promise<MarketCacheSnapshot> {
   ensureMarketPollerStarted();
   let snapshot = getMarketSnapshot();
@@ -79,6 +84,7 @@ export async function ensureMarketCacheWarm(): Promise<MarketCacheSnapshot> {
   return snapshot;
 }
 
+// Stop the fetch timer (for tests only).
 export function stopMarketPollerForTests() {
   const g = pollerGlobal();
   if (g.__marketPollIntervalId) clearInterval(g.__marketPollIntervalId);

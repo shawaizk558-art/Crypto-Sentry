@@ -9,32 +9,26 @@ import { useEffect, useState } from "react";
 
 type SettingsData = {
   alertThreshold: number;
-  aggressivePolling: boolean;
   uiDensity: UiDensity;
-  emailReports: boolean;
 };
 
 const defaults: SettingsData = {
   alertThreshold: -2,
-  aggressivePolling: false,
   uiDensity: "compact",
-  emailReports: true,
 };
 
+// Converts API settings shape to the local form state shape.
 function mapApiSettings(data: {
   alert_threshold: number;
-  aggressive_polling: boolean;
   ui_density: string;
-  email_reports: boolean;
 }): SettingsData {
   return {
     alertThreshold: data.alert_threshold,
-    aggressivePolling: data.aggressive_polling,
     uiDensity: data.ui_density === "expanded" ? "expanded" : "compact",
-    emailReports: data.email_reports,
   };
 }
 
+// Settings page for alert threshold and UI density preferences.
 export function SettingsView() {
   const { setDensity } = useUiDensity();
   const [settings, setSettings] = useState<SettingsData>(defaults);
@@ -44,6 +38,7 @@ export function SettingsView() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Loads current settings from the API on mount.
     async function load() {
       const res = await fetch("/api/user/settings");
       if (res.ok) {
@@ -57,6 +52,7 @@ export function SettingsView() {
     void load();
   }, [setDensity]);
 
+  // Saves a partial settings patch to the API.
   async function persist(patch: Partial<SettingsData>) {
     setSaving(true);
     setError(null);
@@ -64,9 +60,7 @@ export function SettingsView() {
     try {
       const body: Record<string, unknown> = {};
       if (patch.alertThreshold !== undefined) body.alert_threshold = patch.alertThreshold;
-      if (patch.aggressivePolling !== undefined) body.aggressive_polling = patch.aggressivePolling;
       if (patch.uiDensity !== undefined) body.ui_density = patch.uiDensity;
-      if (patch.emailReports !== undefined) body.email_reports = patch.emailReports;
 
       const res = await fetch("/api/user/settings", {
         method: "PATCH",
@@ -97,12 +91,14 @@ export function SettingsView() {
     }
   }
 
+  // Updates UI density locally and persists it immediately.
   async function selectUiDensity(uiDensity: UiDensity) {
     setSettings((s) => ({ ...s, uiDensity }));
     setDensity(uiDensity);
     await persist({ uiDensity });
   }
 
+  // Persists all current form settings to the API.
   async function commit() {
     await persist(settings);
   }
@@ -159,38 +155,8 @@ export function SettingsView() {
             className="h-2 w-full cursor-pointer accent-neon-cyan"
           />
           <p className="mt-3 text-xs text-muted">
-            Flash-crash detection threshold preference (saved per account).
+            Flash-crash detection threshold — saved to your account and applied on the next poll cycle (60s).
           </p>
-
-          <label className="mt-6 flex cursor-pointer items-center justify-between rounded-sm border border-border bg-bg-elevated/60 px-4 py-3 transition-colors hover:border-neon-cyan/20">
-            <div>
-              <p className="text-sm font-medium text-foreground">Aggressive polling</p>
-              <p className="text-xs text-muted">Reserved for future use</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings.aggressivePolling}
-              onChange={(e) =>
-                setSettings((s) => ({ ...s, aggressivePolling: e.target.checked }))
-              }
-              className="h-5 w-5 accent-neon-cyan"
-            />
-          </label>
-
-          <label className="mt-4 flex cursor-pointer items-center justify-between rounded-sm border border-border bg-bg-elevated/60 px-4 py-3 transition-colors hover:border-neon-cyan/20">
-            <div>
-              <p className="text-sm font-medium text-foreground">Email intelligence</p>
-              <p className="text-xs text-muted">Alert digest emails (coming later)</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings.emailReports}
-              onChange={(e) =>
-                setSettings((s) => ({ ...s, emailReports: e.target.checked }))
-              }
-              className="h-5 w-5 accent-neon-cyan"
-            />
-          </label>
         </div>
 
         <div className="card-surface p-6">

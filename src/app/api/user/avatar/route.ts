@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 const MAX_BYTES = 2 * 1024 * 1024;
 const ACCEPTED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
+// Uploads and saves a new avatar image for the authenticated user.
 export async function POST(request: Request) {
   try {
     const user = await requireSessionUser();

@@ -6,9 +6,10 @@ import { getSessionUser } from "@/lib/auth/session";
 export const dynamic = "force-dynamic";
 
 /**
- * SSE: browser connects once; server pushes when the 30s poller writes new prices.
+ * SSE: browser connects once; server pushes when the 60s poller writes new prices.
  * Frontend then fetches /api/prices (read cache only).
  */
+// API: live stream that pings browser when prices update.
 export async function GET(request: Request) {
   const user = await getSessionUser();
   if (!user) {
@@ -20,7 +21,9 @@ export async function GET(request: Request) {
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
+    // Start the live price stream.
     start(controller) {
+      // Send one message to the browser.
       const send = (payload: object) => {
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify(payload)}\n\n`),

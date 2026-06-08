@@ -3,6 +3,7 @@ import { jsonLive } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
+// Returns market data for all or requested coin IDs from cache.
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

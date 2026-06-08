@@ -1,3 +1,4 @@
+// Full-screen decorative cyberpunk gradient and grid background.
 export function CyberBackground() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden>

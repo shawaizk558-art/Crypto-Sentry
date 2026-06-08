@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+// Branded page header with icon, title, subtitle, and action slot.
 export function OperativePageHeader({
   icon: Icon,
   title,

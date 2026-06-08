@@ -21,6 +21,7 @@ const statusConfig = {
   },
 };
 
+// Single table row for a watchlist asset with status badge.
 function WatchlistRow({ item }: { item: WatchlistItem }) {
   const status = statusConfig[item.status];
   const StatusIcon = status.icon;
@@ -63,6 +64,7 @@ function WatchlistRow({ item }: { item: WatchlistItem }) {
   );
 }
 
+// Table listing monitored watchlist assets and their metrics.
 export function WatchlistTable({ items }: { items: WatchlistItem[] }) {
   return (
     <Panel>

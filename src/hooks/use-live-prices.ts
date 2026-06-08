@@ -20,8 +20,9 @@ type UseLivePricesOptions = {
 };
 
 /**
- * Loads /api/prices once, then again only when the server signals a new cache write (~30s).
+ * Loads /api/prices once, then again only when the server signals a new cache write (~60s).
  */
+// React hook: load prices and auto-refresh when server updates them.
 export function useLivePrices(options: UseLivePricesOptions = {}) {
   const { loadOnMount = true } = options;
   const [coins, setCoins] = useState<MarketCoin[]>([]);
@@ -30,6 +31,7 @@ export function useLivePrices(options: UseLivePricesOptions = {}) {
   const [connected, setConnected] = useState(false);
   const lastVersion = useRef<number | null>(null);
 
+  // Load prices from /api/prices.
   const loadFromCache = useCallback(async () => {
     const res = await fetch("/api/prices", liveMarketFetchInit);
     const data = await res.json();

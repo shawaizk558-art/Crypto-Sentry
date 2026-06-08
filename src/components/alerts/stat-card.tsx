@@ -2,6 +2,7 @@ import { Panel } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
+// Dashboard stat panel with icon, value, and optional accent variant.
 export function StatCard({
   label,
   value,

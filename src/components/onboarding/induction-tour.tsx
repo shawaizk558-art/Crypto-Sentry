@@ -30,6 +30,7 @@ const SIDEBAR_TARGETS = new Set([
   "sidebar-profile",
 ]);
 
+// Guided spotlight tour that walks new users through key UI areas.
 export function InductionTour({ active, onComplete }: InductionTourProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -46,6 +47,7 @@ export function InductionTour({ active, onComplete }: InductionTourProps) {
     setMounted(true);
   }, []);
 
+  // Measures the DOM rect of the current tour step's target element.
   const measureTarget = useCallback(() => {
     if (!step.target) {
       setTargetRect(null);
@@ -90,11 +92,13 @@ export function InductionTour({ active, onComplete }: InductionTourProps) {
     };
   }, [active, step, pathname, router, measureTarget]);
 
+  // Marks onboarding complete on the server and closes the tour.
   async function finish() {
     await fetch("/api/user/onboarding", { method: "PATCH" });
     onComplete();
   }
 
+  // Advances to the next tour step or finishes on the last step.
   function next() {
     if (isLast) {
       void finish();

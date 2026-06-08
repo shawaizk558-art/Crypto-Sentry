@@ -3,6 +3,7 @@ import { getMarketData } from "@/lib/coingecko";
 import { addToWatchlist, getUserWatchlist } from "@/lib/db/watchlist";
 import { getSessionUser } from "@/lib/auth/session";
 
+// Returns the user's watchlist enriched with live market data.
 export async function GET() {
   const user = await getSessionUser();
   if (!user) {
@@ -38,6 +39,7 @@ export async function GET() {
   return NextResponse.json({ items });
 }
 
+// Adds an asset to the authenticated user's watchlist.
 export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) {

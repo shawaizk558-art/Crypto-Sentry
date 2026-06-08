@@ -2,6 +2,7 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { NextResponse } from "next/server";
 
+// Updates the authenticated user's display name.
 export async function PATCH(request: Request) {
   try {
     const user = await requireSessionUser();

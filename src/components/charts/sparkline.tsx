@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { useId } from "react";
 
+// Converts numeric series into an SVG line path.
 function toPath(values: number[], width: number, height: number) {
   const max = Math.max(...values);
   const min = Math.min(...values);
@@ -18,6 +19,7 @@ function toPath(values: number[], width: number, height: number) {
   return `M ${points.join(" L ")}`;
 }
 
+// Renders a filled area sparkline chart for price trends.
 export function Sparkline({
   data,
   className,
@@ -63,6 +65,7 @@ export function Sparkline({
   );
 }
 
+// Renders a simple gradient bar chart from percentage heights.
 export function BarChart({
   data,
   className,

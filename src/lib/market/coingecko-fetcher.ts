@@ -25,6 +25,7 @@ type MarketsRow = {
   price_change_percentage_7d_in_currency?: number | null;
 };
 
+// Get 1h, 24h, or 7d % change from API response.
 function pickChange(
   row: MarketsRow,
   timeframe: "1h" | "24h" | "7d",
@@ -34,6 +35,7 @@ function pickChange(
   return plain ?? inCurrency ?? 0;
 }
 
+// Turn one API row into our coin object.
 function mapMarketsRow(row: MarketsRow): MarketCoin {
   return {
     id: row.id,
@@ -48,6 +50,7 @@ function mapMarketsRow(row: MarketsRow): MarketCoin {
   };
 }
 
+// Call CoinGecko once with our API key.
 async function fetchOnce(url: string): Promise<Response> {
   return fetch(url, {
     cache: "no-store",
@@ -56,7 +59,7 @@ async function fetchOnce(url: string): Promise<Response> {
   });
 }
 
-/** One call per poll cycle — top 100 coins (price, 1h/24h/7d change, cap, image). */
+// Fetch top 100 coins from CoinGecko (price, changes, market cap).
 export async function fetchTop100Markets(): Promise<MarketCoin[]> {
   if (isRateLimitCooldownActive()) {
     throw new Error("rate limit cooldown active");

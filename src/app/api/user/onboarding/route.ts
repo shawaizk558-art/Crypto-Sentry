@@ -2,6 +2,7 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { NextResponse } from "next/server";
 
+// Marks the authenticated user's onboarding tour as completed.
 export async function PATCH() {
   try {
     const user = await requireSessionUser();

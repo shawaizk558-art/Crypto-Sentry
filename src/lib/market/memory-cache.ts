@@ -3,6 +3,7 @@ import type { MarketCacheMeta, MarketCacheSnapshot, MarketCoin } from "@/types/m
 
 const STALE_AFTER_MS = 90_000;
 
+// Default status when no prices are loaded yet.
 const defaultMeta = (): MarketCacheMeta => ({
   updatedAt: null,
   fetchedAt: null,
@@ -20,6 +21,7 @@ type GlobalMarketStore = {
   meta: MarketCacheMeta;
 };
 
+// Get the in-memory box where we keep coin prices.
 function getStore(): GlobalMarketStore {
   const g = globalThis as typeof globalThis & {
     __cryptoSentryMarketCache?: GlobalMarketStore;
@@ -33,6 +35,7 @@ function getStore(): GlobalMarketStore {
   return g.__cryptoSentryMarketCache;
 }
 
+// Get all cached coins and info about how old they are.
 export function getMarketSnapshot(): MarketCacheSnapshot {
   const { coins, meta } = getStore();
   const now = Date.now();
@@ -52,12 +55,14 @@ export function getMarketSnapshot(): MarketCacheSnapshot {
   };
 }
 
+// Get only the coins whose IDs you pass in.
 export function getCoinsByIds(ids: string[]): MarketCoin[] {
   if (!ids.length) return [];
   const set = new Set(ids);
   return getStore().coins.filter((c) => set.has(c.id));
 }
 
+// Save new prices into memory after a fetch.
 export function updateMarketCache(
   nextCoins: MarketCoin[],
   opts: { source: "live" | "stale" | "empty"; error?: string | null },
@@ -92,16 +97,19 @@ export function updateMarketCache(
   }
 }
 
+// Add 1 to the fetch counter (for logs/debug).
 export function incrementPollCycle() {
   const store = getStore();
   store.meta = { ...store.meta, pollCycle: store.meta.pollCycle + 1 };
 }
 
+// Remember when the next price fetch will run.
 export function setNextPollAt(ts: number) {
   const store = getStore();
   store.meta = { ...store.meta, nextPollAt: ts };
 }
 
+// Get each coin's price (used to check if price dropped).
 export function getBaselinePrices(): Map<string, number> {
   return new Map(getStore().coins.map((c) => [c.id, c.current_price]));
 }

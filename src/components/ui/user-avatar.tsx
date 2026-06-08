@@ -15,6 +15,7 @@ const sizeMap = {
   lg: { box: "h-32 w-32", text: "text-4xl" },
 };
 
+// Renders a user image or initials fallback avatar.
 export function UserAvatar({
   src,
   name,

@@ -10,6 +10,7 @@ import { ArrowRight, Lock, Mail } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+// Email/password signup form with Google OAuth option.
 function SignupFormInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -21,6 +22,7 @@ function SignupFormInner() {
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Creates an account via the API and redirects to login.
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -135,6 +137,7 @@ function SignupFormInner() {
   );
 }
 
+// Suspense wrapper for the signup form (needs search params).
 export function SignupForm() {
   return (
     <Suspense fallback={<p className="text-sm text-muted">Loading…</p>}>

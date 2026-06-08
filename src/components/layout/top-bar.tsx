@@ -3,6 +3,7 @@
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Search } from "lucide-react";
 
+// Sticky header with search, network status, and user avatar.
 export function TopBar({
   name,
   avatarUrl,

@@ -2,6 +2,7 @@ import { StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ReactNode } from "react";
 
+// Page title block with live status line and optional action.
 export function PageHeader({
   title,
   description,

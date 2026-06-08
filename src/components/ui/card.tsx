@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
+// Card container with optional glow and urgent styling.
 export function Panel({
   children,
   className,
@@ -26,6 +27,7 @@ export function Panel({
   );
 }
 
+// Header section for a panel with title, subtitle, and action slot.
 export function PanelHeader({
   title,
   subtitle,

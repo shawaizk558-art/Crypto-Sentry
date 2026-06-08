@@ -7,6 +7,7 @@ import {
 } from "@/lib/user/settings";
 import { NextResponse } from "next/server";
 
+// Returns the authenticated user's settings.
 export async function GET() {
   try {
     const user = await requireSessionUser();
@@ -21,6 +22,7 @@ export async function GET() {
   }
 }
 
+// Updates alert threshold and/or UI density for the authenticated user.
 export async function PATCH(request: Request) {
   try {
     const user = await requireSessionUser();
@@ -28,9 +30,7 @@ export async function PATCH(request: Request) {
 
     const patch: Partial<{
       alert_threshold: number;
-      aggressive_polling: boolean;
       ui_density: UiDensity;
-      email_reports: boolean;
     }> = {};
 
     if (body.alert_threshold !== undefined) {
@@ -44,10 +44,6 @@ export async function PATCH(request: Request) {
       patch.alert_threshold = value;
     }
 
-    if (body.aggressive_polling !== undefined) {
-      patch.aggressive_polling = Boolean(body.aggressive_polling);
-    }
-
     if (body.ui_density !== undefined) {
       const density = body.ui_density?.toString();
       if (density !== "compact" && density !== "expanded") {
@@ -57,10 +53,6 @@ export async function PATCH(request: Request) {
         );
       }
       patch.ui_density = parseUiDensity(density);
-    }
-
-    if (body.email_reports !== undefined) {
-      patch.email_reports = Boolean(body.email_reports);
     }
 
     if (Object.keys(patch).length === 0) {

@@ -6,12 +6,14 @@ export type PriceChanges = {
   change7d: number;
 };
 
+// Returns Tailwind color class for positive, negative, or flat change.
 export function changeColorClass(value: number) {
   if (value < 0) return "text-neon-magenta";
   if (value > 0) return "text-neon-green";
   return "text-muted";
 }
 
+// Renders a formatted percentage change with semantic coloring.
 export function PriceChangeCell({
   value,
   className,
@@ -26,6 +28,7 @@ export function PriceChangeCell({
   );
 }
 
+// Small labeled data pill for compact metric display.
 export function DataPill({
   label,
   value,
@@ -52,6 +55,7 @@ export function DataPill({
   );
 }
 
+// Row of 1h, 24h, and 7d change pills for an asset.
 export function PriceChangePills({
   changes,
   className,

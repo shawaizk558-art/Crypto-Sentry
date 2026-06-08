@@ -1,4 +1,3 @@
-import { AuthSessionProvider } from "@/components/providers/session-provider";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Orbitron } from "next/font/google";
 import "./globals.css";
@@ -27,6 +26,7 @@ export const metadata: Metadata = {
     "Real-time crypto intelligence. Monitor assets, detect drops, act instantly.",
 };
 
+// Root HTML shell with global fonts and metadata.
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -37,9 +37,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${jetbrains.variable} ${orbitron.variable}`}
     >
-      <body>
-        <AuthSessionProvider>{children}</AuthSessionProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

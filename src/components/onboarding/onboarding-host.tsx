@@ -7,6 +7,7 @@ type OnboardingHostProps = {
   showInduction: boolean;
 };
 
+// Mounts the induction tour when the user has not completed onboarding.
 export function OnboardingHost({ showInduction }: OnboardingHostProps) {
   const [active, setActive] = useState(showInduction);
 

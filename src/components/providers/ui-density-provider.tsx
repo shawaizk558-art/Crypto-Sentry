@@ -13,14 +13,17 @@ const UiDensityContext = createContext<UiDensityContextValue>({
   setDensity: () => {},
 });
 
+// React hook: get/set compact vs expanded layout.
 export function useUiDensity() {
   return useContext(UiDensityContext);
 }
 
+// Set compact or expanded mode on the page.
 function applyDensity(density: UiDensity) {
   document.documentElement.dataset.uiDensity = density;
 }
 
+// Wrap app so child components can change layout density.
 export function UiDensityProvider({
   initialDensity,
   children,
@@ -38,6 +41,7 @@ export function UiDensityProvider({
     applyDensity(density);
   }, [density]);
 
+  // Change density in React and on the HTML element.
   function setDensity(next: UiDensity) {
     setDensityState(next);
     applyDensity(next);

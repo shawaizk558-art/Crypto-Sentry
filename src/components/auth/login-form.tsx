@@ -8,6 +8,7 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+// Email/password login form with Google OAuth option.
 function LoginFormInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -27,6 +28,7 @@ function LoginFormInner() {
         ? "Sign-in failed. Try again."
         : null;
 
+  // Submits credentials via NextAuth and redirects on success.
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -111,6 +113,7 @@ function LoginFormInner() {
   );
 }
 
+// Suspense wrapper for the login form (needs search params).
 export function LoginForm() {
   return (
     <Suspense fallback={<p className="text-sm text-muted">Loading…</p>}>

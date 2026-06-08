@@ -7,6 +7,7 @@ const severityStyles: Record<AlertSeverity, string> = {
   medium: "bg-neon-cyan/10 text-neon-cyan border-neon-cyan/30",
 };
 
+// Badge showing alert severity level with color coding.
 export function SeverityBadge({
   severity,
   className,
@@ -27,6 +28,7 @@ export function SeverityBadge({
   );
 }
 
+// Small colored dot indicating online, offline, or warning status.
 export function StatusDot({
   status,
 }: {

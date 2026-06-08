@@ -3,7 +3,8 @@ import { jsonLive } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
-/** Dashboard feed — reads in-memory cache only (CoinGecko updated by 30s Node poller). */
+/** Dashboard feed — reads in-memory cache only (CoinGecko updated by 60s Node poller). */
+// API: send cached coin prices to the browser.
 export async function GET() {
   const { coins, meta } = await getMarketData();
 

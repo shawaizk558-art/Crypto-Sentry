@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db/prisma";
 import type { SessionUser } from "@/types/auth";
 
+// Get the logged-in user, or null if nobody is signed in.
 export async function getSessionUser(): Promise<SessionUser | null> {
   const session = await auth();
   if (!session?.user?.id) return null;
@@ -32,6 +33,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   };
 }
 
+// Get the logged-in user, or throw "Unauthorized" if not signed in.
 export async function requireSessionUser(): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user) {

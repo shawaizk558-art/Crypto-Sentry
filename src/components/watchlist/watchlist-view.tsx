@@ -22,6 +22,7 @@ type WatchlistItem = {
   change7d: number;
 };
 
+// Displays the user's watchlist with live price updates.
 export function WatchlistView() {
   const { coins, meta } = useLivePrices();
   const [rows, setRows] = useState<WatchlistItem[]>([]);
@@ -32,6 +33,7 @@ export function WatchlistView() {
     [coins],
   );
 
+  // Fetches watchlist rows from the API.
   const loadWatchlist = useCallback(async () => {
     const res = await fetch("/api/watchlist", liveMarketFetchInit);
     const data = await res.json();
@@ -62,6 +64,7 @@ export function WatchlistView() {
     });
   }, [rows, priceById]);
 
+  // Removes an asset from the watchlist via the API.
   async function remove(assetId: string) {
     await fetch(`/api/watchlist/${assetId}`, { method: "DELETE" });
     setRows((prev) => prev.filter((i) => i.assetId !== assetId));
@@ -72,7 +75,7 @@ export function WatchlistView() {
       <OperativePageHeader
         icon={Star}
         title="Watchlist"
-        subtitle="Prices refresh when server cache updates (~30s)"
+        subtitle="Prices refresh when server cache updates (~60s)"
         action={
           <Link href="/market" className="cyber-btn-primary px-4 py-2.5 text-xs">
             Add assets

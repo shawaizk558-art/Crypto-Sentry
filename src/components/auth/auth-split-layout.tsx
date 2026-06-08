@@ -3,6 +3,7 @@ import { Shield } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+// Two-column layout for login and signup pages.
 export function AuthSplitLayout({
   children,
   title,
@@ -103,6 +104,7 @@ export function AuthSplitLayout({
   );
 }
 
+// Footer link for switching between login and signup.
 export function AuthFooterLink({
   text,
   linkText,
@@ -122,6 +124,7 @@ export function AuthFooterLink({
   );
 }
 
+// Horizontal divider with an "or" label between auth methods.
 export function AuthOrDivider() {
   return (
     <div className="relative py-2">

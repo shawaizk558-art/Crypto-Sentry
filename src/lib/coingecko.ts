@@ -14,7 +14,7 @@ import type { MarketCacheSnapshot, MarketCoin } from "@/types/market";
 
 export type { MarketCoin };
 
-/** Read in-memory cache only. CoinGecko is updated by the 30s background poller. */
+/** Read in-memory cache only. CoinGecko is updated by the 60s background poller. */
 export async function getMarketData(ids?: string[]): Promise<MarketCacheSnapshot> {
   ensureMarketPollerStarted();
   await ensureMarketCacheWarm();
@@ -35,6 +35,7 @@ export async function getMarketData(ids?: string[]): Promise<MarketCacheSnapshot
   return { coins: snapshot.coins, meta };
 }
 
+// Read cached coins from memory (no waiting).
 export function fetchMarketCoins(ids?: string[]): MarketCoin[] {
   ensureMarketPollerStarted();
   const { coins } = getMarketSnapshot();
@@ -44,6 +45,7 @@ export function fetchMarketCoins(ids?: string[]): MarketCoin[] {
   return coins;
 }
 
+// Info about cached prices: age, version, how often we fetch.
 export function getMarketCacheMeta() {
   ensureMarketPollerStarted();
   return {
@@ -53,6 +55,7 @@ export function getMarketCacheMeta() {
   };
 }
 
+// Show price in dollars. Uses B/M for big numbers.
 export function formatUsd(price: number, compact = false) {
   if (price >= 1_000_000_000) {
     return `$${(price / 1_000_000_000).toFixed(2)}B`;

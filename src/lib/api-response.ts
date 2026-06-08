@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+// Send JSON to the browser and tell it not to cache.
 export function jsonLive(data: unknown, status = 200) {
   return NextResponse.json(data, {
     status,

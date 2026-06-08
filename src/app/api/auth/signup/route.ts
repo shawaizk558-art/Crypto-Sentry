@@ -2,6 +2,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/db/prisma";
 import { NextResponse } from "next/server";
 
+// Creates a new user account with email and password.
 export async function POST(request: Request) {
   try {
     const body = await request.json();

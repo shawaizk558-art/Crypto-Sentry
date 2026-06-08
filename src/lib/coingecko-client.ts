@@ -1,6 +1,7 @@
 /** Client-safe formatting (no server-only import). */
 
 /** Live ticker display — keeps cents visible on BTC/ETH. */
+// Show live price in dollars (more decimals for cheap coins).
 export function formatLiveUsd(price: number) {
   if (!Number.isFinite(price) || price <= 0) return "—";
   if (price >= 1000) {
@@ -18,10 +19,12 @@ export function formatLiveUsd(price: number) {
   return `$${price.toFixed(6)}`;
 }
 
+// Same as formatLiveUsd.
 export function formatUsd(price: number) {
   return formatLiveUsd(price);
 }
 
+// Show market cap, e.g. $1.2T or $500M.
 export function formatMarketCap(cap: number) {
   if (cap >= 1e12) return `$${(cap / 1e12).toFixed(2)}T`;
   if (cap >= 1e9) return `$${(cap / 1e9).toFixed(2)}B`;

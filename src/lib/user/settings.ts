@@ -6,22 +6,20 @@ export type UiDensity = "compact" | "expanded";
 
 export type UserSettingsData = {
   alert_threshold: number;
-  aggressive_polling: boolean;
   ui_density: UiDensity;
-  email_reports: boolean;
 };
 
 export const DEFAULT_USER_SETTINGS: UserSettingsData = {
   alert_threshold: -2,
-  aggressive_polling: false,
   ui_density: "compact",
-  email_reports: true,
 };
 
+// Turn saved value into "compact" or "expanded".
 export function parseUiDensity(value: string | null | undefined): UiDensity {
   return value === "expanded" ? "expanded" : "compact";
 }
 
+// Get user settings. Create defaults if first time.
 export async function getOrCreateUserSettings(
   userId: string,
 ): Promise<UserSettingsData> {
@@ -31,12 +29,11 @@ export async function getOrCreateUserSettings(
 
   return {
     alert_threshold: row.alert_threshold,
-    aggressive_polling: row.aggressive_polling,
     ui_density: parseUiDensity(row.ui_density),
-    email_reports: row.email_reports,
   };
 }
 
+// Update some user settings and return the new values.
 export async function updateUserSettings(
   userId: string,
   patch: Partial<UserSettingsData>,
@@ -45,22 +42,14 @@ export async function updateUserSettings(
 
   const data: Partial<{
     alert_threshold: number;
-    aggressive_polling: boolean;
     ui_density: string;
-    email_reports: boolean;
   }> = {};
 
   if (patch.alert_threshold !== undefined) {
     data.alert_threshold = patch.alert_threshold;
   }
-  if (patch.aggressive_polling !== undefined) {
-    data.aggressive_polling = patch.aggressive_polling;
-  }
   if (patch.ui_density !== undefined) {
     data.ui_density = patch.ui_density;
-  }
-  if (patch.email_reports !== undefined) {
-    data.email_reports = patch.email_reports;
   }
 
   const row = await prisma.userSettings.update({
@@ -70,8 +59,6 @@ export async function updateUserSettings(
 
   return {
     alert_threshold: row.alert_threshold,
-    aggressive_polling: row.aggressive_polling,
     ui_density: parseUiDensity(row.ui_density),
-    email_reports: row.email_reports,
   };
 }

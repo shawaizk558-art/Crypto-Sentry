@@ -13,6 +13,7 @@ const providers: NextAuthConfig["providers"] = [
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
     },
+    // Check email + password when user logs in.
     async authorize(credentials) {
       const email = credentials?.email?.toString().trim().toLowerCase();
       const password = credentials?.password?.toString();

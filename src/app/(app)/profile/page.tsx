@@ -3,6 +3,7 @@ import { getProfileAvatarUrl, getProfileName } from "@/lib/auth/profile";
 import { getSessionUser } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 
+// Profile page route loading session user data for the profile view.
 export default async function ProfilePage() {
   const user = await getSessionUser();
   if (!user) redirect("/auth/login");

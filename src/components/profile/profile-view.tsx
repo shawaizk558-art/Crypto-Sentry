@@ -29,6 +29,7 @@ type ProfileViewProps = {
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
+// Profile page for editing display name and avatar.
 export function ProfileView({
   email,
   name: initialName,
@@ -52,6 +53,7 @@ export function ProfileView({
     day: "numeric",
   });
 
+  // Persists the edited display name to the API.
   async function saveName() {
     const trimmed = draftName.trim();
     if (!trimmed) {
@@ -85,6 +87,7 @@ export function ProfileView({
     router.refresh();
   }
 
+  // Uploads a new avatar image and updates the profile.
   async function handleAvatarChange(file: File) {
     if (!ACCEPTED_AVATAR_TYPES.includes(file.type)) {
       setError("Use a JPEG, PNG, WebP, or GIF image.");
@@ -269,6 +272,7 @@ export function ProfileView({
   );
 }
 
+// Small info card with icon, title, and detail text.
 function InfoCard({
   icon: Icon,
   title,

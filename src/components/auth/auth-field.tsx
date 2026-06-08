@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { InputHTMLAttributes } from "react";
 
+// Labeled input field with icon for auth forms.
 export function AuthField({
   label,
   icon: Icon,

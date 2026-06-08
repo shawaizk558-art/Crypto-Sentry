@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { removeFromWatchlist } from "@/lib/db/watchlist";
 import { getSessionUser } from "@/lib/auth/session";
 
+// Removes an asset from the authenticated user's watchlist.
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ assetId: string }> },

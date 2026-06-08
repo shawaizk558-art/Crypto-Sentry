@@ -7,6 +7,7 @@ const globalForPrisma = globalThis as unknown as {
   pool: Pool | undefined;
 };
 
+// Connect to the Postgres database.
 function createPrisma() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {

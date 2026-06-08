@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getMarketCacheMeta } from "@/lib/coingecko";
-import { getRecentLogLines, getRecentLogs } from "@/lib/logger";
+import { getRecentSystemLogLines, getRecentSystemLogs } from "@/lib/logger";
 import { ensureMarketPollerStarted } from "@/lib/market/poller";
 
+// Returns cache health metadata and optional system logs.
 export async function GET(request: Request) {
   ensureMarketPollerStarted();
 
@@ -23,8 +24,8 @@ export async function GET(request: Request) {
     },
     ...(includeLogs
       ? {
-          logs: getRecentLogs(logLimit),
-          lines: getRecentLogLines(logLimit),
+          systemLogs: await getRecentSystemLogs(logLimit),
+          systemLogLines: await getRecentSystemLogLines(logLimit),
         }
       : {}),
   });
