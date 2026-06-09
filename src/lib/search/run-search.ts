@@ -1,3 +1,5 @@
+/** Combines local cache, CoinGecko, protocols, and TX hash detection into one search. */
+
 import "server-only";
 
 import { fetchMarketCoins } from "@/lib/coingecko";
@@ -10,6 +12,7 @@ const LOCAL_ASSET_LIMIT = 8;
 const REMOTE_ASSET_LIMIT = 8;
 const PROTOCOL_LIMIT = 5;
 
+// Search coins already in our price cache (fast, no API call).
 function searchLocalAssets(query: string): SearchResult[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
@@ -52,6 +55,7 @@ function searchLocalAssets(query: string): SearchResult[] {
   }));
 }
 
+// Remove duplicate coins when local and remote search return the same asset.
 function dedupeAssets(results: SearchResult[]): SearchResult[] {
   const seen = new Set<string>();
   const deduped: SearchResult[] = [];
@@ -69,6 +73,7 @@ function dedupeAssets(results: SearchResult[]): SearchResult[] {
   return deduped;
 }
 
+// Main search: check TX hash, local coins, CoinGecko, and protocols — then merge results.
 export async function runSearch(rawQuery: string): Promise<SearchResponse> {
   const query = rawQuery.trim();
   if (!query) {

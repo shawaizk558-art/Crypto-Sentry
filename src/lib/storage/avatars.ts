@@ -1,7 +1,10 @@
+/** Upload and resolve profile avatar images (Supabase in prod, local folder in dev). */
+
 import "server-only";
 
 const BUCKET = "avatars";
 
+// Read Supabase URL and service key from env. Returns null if not set up.
 function getSupabaseStorageConfig() {
   const url =
     process.env.SUPABASE_URL?.trim() ||
@@ -11,6 +14,7 @@ function getSupabaseStorageConfig() {
   return { url: url.replace(/\/$/, ""), serviceKey };
 }
 
+// True when the avatar was saved to the local /uploads folder (dev only).
 export function isLocalAvatarUrl(url: string): boolean {
   return url.startsWith("/uploads/");
 }
@@ -34,27 +38,43 @@ export async function uploadAvatarToStorage(
   const config = getSupabaseStorageConfig();
   if (!config) {
     throw new Error(
-      "Avatar storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+      "STORAGE_NOT_CONFIGURED: Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to Vercel env vars.",
     );
   }
 
   const objectPath = `${userId}.${ext}`;
   const uploadUrl = `${config.url}/storage/v1/object/${BUCKET}/${objectPath}`;
+  const headers = {
+    Authorization: `Bearer ${config.serviceKey}`,
+    apikey: config.serviceKey,
+    "Content-Type": contentType,
+    "x-upsert": "true",
+    "cache-control": "3600",
+  };
 
-  const res = await fetch(uploadUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.serviceKey}`,
-      apikey: config.serviceKey,
-      "Content-Type": contentType,
-      "x-upsert": "true",
-    },
+  // Supabase upsert expects PUT; fall back to POST for first upload.
+  let res = await fetch(uploadUrl, {
+    method: "PUT",
+    headers,
     body: new Uint8Array(buffer),
   });
 
+  if (!res.ok && res.status === 400) {
+    res = await fetch(uploadUrl, {
+      method: "POST",
+      headers,
+      body: new Uint8Array(buffer),
+    });
+  }
+
   if (!res.ok) {
     const detail = await res.text();
-    throw new Error(`Supabase upload failed (${res.status}): ${detail}`);
+    if (res.status === 404 || detail.includes("Bucket not found")) {
+      throw new Error(
+        "BUCKET_NOT_FOUND: Run supabase/avatars-bucket.sql in the Supabase SQL Editor.",
+      );
+    }
+    throw new Error(`SUPABASE_UPLOAD_${res.status}: ${detail}`);
   }
 
   return `${config.url}/storage/v1/object/public/${BUCKET}/${objectPath}?t=${Date.now()}`;

@@ -22,11 +22,17 @@ function LoginFormInner() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const callbackError =
-    error === "CredentialsSignin" || error === "callback"
+    error === "CredentialsSignin"
       ? "Invalid email or password."
-      : error
-        ? "Sign-in failed. Try again."
-        : null;
+      : error === "OAuthAccountNotLinked"
+        ? "This email is registered with a password. Sign in with email first."
+        : error === "Configuration"
+          ? "Sign-in could not complete. Try again or use email login."
+          : error === "callback"
+            ? "Sign-in was interrupted. Try again."
+            : error
+              ? "Sign-in failed. Try again."
+              : null;
 
   // Submits credentials via NextAuth and redirects on success.
   async function handleLogin(e: React.FormEvent) {

@@ -24,7 +24,25 @@ export function GoogleSignInButton({
     setError(null);
 
     try {
-      await signIn("google", { callbackUrl: "/" });
+      const result = await signIn("google", { callbackUrl: "/", redirect: false });
+
+      if (result?.error) {
+        setError(
+          result.error === "Configuration"
+            ? "Sign-in is not configured. Contact support."
+            : "Could not start Google sign-in.",
+        );
+        setLoading(false);
+        return;
+      }
+
+      if (result?.url) {
+        window.location.href = result.url;
+        return;
+      }
+
+      setError("Could not start Google sign-in.");
+      setLoading(false);
     } catch {
       setError("Could not start Google sign-in.");
       setLoading(false);

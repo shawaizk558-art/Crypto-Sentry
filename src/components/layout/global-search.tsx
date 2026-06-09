@@ -7,12 +7,14 @@ import { ExternalLink, Layers, Search, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+// Heading text for each result group in the dropdown (Assets, Protocols, etc.).
 function groupLabel(type: SearchResult["type"]) {
   if (type === "asset") return "Assets";
   if (type === "protocol") return "Protocols";
   return "Transactions";
 }
 
+// One row in the search dropdown — shows asset, protocol, or transaction info.
 function ResultRow({
   result,
   active,
@@ -105,6 +107,7 @@ function ResultRow({
   );
 }
 
+// Top-bar search box with live results as you type.
 export function GlobalSearch() {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -116,6 +119,7 @@ export function GlobalSearch() {
 
   const abortRef = useRef<AbortController | null>(null);
 
+  // Call /api/search after the user stops typing (debounced).
   const fetchResults = useCallback(async (q: string) => {
     const trimmed = q.trim();
     abortRef.current?.abort();
@@ -167,6 +171,7 @@ export function GlobalSearch() {
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, []);
 
+  // Open explorer for TX, or go to market page for assets and protocols.
   function handleSelect(result: SearchResult) {
     setOpen(false);
     setActiveIndex(-1);
@@ -181,6 +186,7 @@ export function GlobalSearch() {
     router.push(`/market?q=${encodeURIComponent(assetId)}`);
   }
 
+  // Arrow keys to move, Enter to pick, Escape to close the dropdown.
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (!open && event.key !== "Escape") return;
 

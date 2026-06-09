@@ -10,11 +10,13 @@ import type { CryptoAlertItem } from "@/types/alerts";
 import { AlertOctagon, Filter, TrendingDown } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+// Alert log page — loads flash-crash alerts and refreshes when prices update.
 export function AlertsFeed() {
   const { meta } = useLivePrices();
   const [alerts, setAlerts] = useState<CryptoAlertItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Fetch the latest alerts from the API.
   const load = useCallback(async () => {
     const res = await fetch("/api/alerts?limit=50", liveMarketFetchInit);
     const data = await res.json();

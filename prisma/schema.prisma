@@ -10,6 +10,7 @@ model User {
   id            String      @id @default(cuid())
   name          String?
   email         String      @unique
+  emailVerified DateTime?
   image         String?
   password_hash          String?
   onboarding_completed   Boolean     @default(false)

@@ -7,7 +7,7 @@ const { auth } = NextAuth(authConfig);
 // Send guests to login. Block API pages unless logged in.
 export default auth((request) => {
   const { pathname } = request.nextUrl;
-  const isLoggedIn = !!request.auth;
+  const isLoggedIn = !!request.auth?.user?.id;
 
   const isAuthPage =
     pathname.startsWith("/auth") ||
@@ -19,7 +19,13 @@ export default auth((request) => {
     pathname.startsWith("/api/prices") ||
     pathname.startsWith("/api/market");
 
-  if (pathname.startsWith("/api/") && isPublicApi) {
+  if (pathname.startsWith("/api/")) {
+    if (isPublicApi) {
+      return NextResponse.next();
+    }
+    if (!isLoggedIn) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.next();
   }
 

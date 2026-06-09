@@ -11,6 +11,8 @@ import {
   updateMarketCache,
 } from "@/lib/market/memory-cache";
 
+/** Fetches fresh prices from CoinGecko, detects flash crashes, and updates the in-memory cache. */
+
 type RefreshGlobals = typeof globalThis & {
   __lastCoingeckoFetchAt?: number;
   __priceRefreshInFlight?: Promise<void>;

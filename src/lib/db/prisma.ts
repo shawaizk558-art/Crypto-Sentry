@@ -13,6 +13,7 @@ const POOL_MAX = Math.max(
   Number.parseInt(process.env.DATABASE_POOL_MAX ?? "2", 10) || 2,
 );
 
+// Reuse one Postgres connection pool across hot reloads (dev) and requests.
 function getPool(connectionString: string) {
   if (!globalForPrisma.pool) {
     globalForPrisma.pool = new Pool({

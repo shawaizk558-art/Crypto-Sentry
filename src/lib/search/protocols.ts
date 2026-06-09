@@ -1,3 +1,5 @@
+/** Built-in list of popular DeFi protocols for global search. */
+
 export type ProtocolEntry = {
   id: string;
   name: string;
@@ -114,6 +116,7 @@ export const PROTOCOL_CATALOG: ProtocolEntry[] = [
   },
 ];
 
+// Find DeFi protocols whose name, alias, or chain matches the search text.
 export function searchProtocols(query: string, limit = 5): ProtocolEntry[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];

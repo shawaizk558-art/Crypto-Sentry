@@ -5,6 +5,7 @@ export const authConfig = {
   session: { strategy: "jwt" },
   pages: {
     signIn: "/auth/login",
+    error: "/auth/login",
   },
   providers: [],
   callbacks: {

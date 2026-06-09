@@ -1,3 +1,5 @@
+/** CoinGecko remote search — finds coins not already in the local price cache. */
+
 import "server-only";
 
 import {
@@ -18,6 +20,7 @@ type CoinGeckoSearchResponse = {
   coins?: CoinGeckoSearchCoin[];
 };
 
+// Search CoinGecko for coins matching the query (used when cache has few results).
 export async function searchCoinGeckoAssets(
   query: string,
   limit = 8,
