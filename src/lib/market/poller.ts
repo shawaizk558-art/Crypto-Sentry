@@ -5,7 +5,11 @@ import {
   setNextPollAt,
 } from "@/lib/market/memory-cache";
 import { COINGECKO_POLL_MS } from "@/lib/market/constants";
-import { refreshPricesFromApi } from "@/lib/market/refresh-prices";
+import {
+  refreshPricesFromApi,
+  type PriceRefreshResult,
+} from "@/lib/market/refresh-prices";
+import { hydrateMarketCacheFromDb } from "@/lib/market/snapshot-store";
 import type { MarketCacheSnapshot } from "@/types/market";
 
 const MIN_POLL_MS = 60_000;
@@ -28,18 +32,18 @@ function pollIntervalMs() {
   return Number.isFinite(parsed) && parsed >= MIN_POLL_MS ? parsed : COINGECKO_POLL_MS;
 }
 
-// Fetch prices once. Skip if a fetch is already running.
-export async function runPollCycle() {
+// Fetch prices once. Waits if another poll cycle is already running.
+export async function runPollCycle(): Promise<PriceRefreshResult> {
   const g = pollerGlobal();
   if (g.__marketPollInFlight) {
-    return;
+    return refreshPricesFromApi();
   }
 
   g.__marketPollInFlight = true;
   incrementPollCycle();
 
   try {
-    await refreshPricesFromApi();
+    return await refreshPricesFromApi();
   } finally {
     g.__marketPollInFlight = false;
     setNextPollAt(Date.now() + pollIntervalMs());
@@ -67,6 +71,10 @@ export function ensureMarketPollerStarted() {
 export async function ensureMarketCacheWarm(): Promise<MarketCacheSnapshot> {
   ensureMarketPollerStarted();
   let snapshot = getMarketSnapshot();
+  if (snapshot.coins.length > 0) return snapshot;
+
+  await hydrateMarketCacheFromDb();
+  snapshot = getMarketSnapshot();
   if (snapshot.coins.length > 0) return snapshot;
 
   logger.warn("No prices loaded yet — fetching from CoinGecko now…");

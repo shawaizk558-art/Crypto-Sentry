@@ -17,7 +17,8 @@ export default auth((request) => {
   const isPublicApi =
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/prices") ||
-    pathname.startsWith("/api/market");
+    pathname.startsWith("/api/market") ||
+    pathname.startsWith("/api/cron");
 
   if (pathname.startsWith("/api/")) {
     if (isPublicApi) {

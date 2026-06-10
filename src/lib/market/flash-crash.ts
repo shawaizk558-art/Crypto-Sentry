@@ -6,14 +6,11 @@ import type { MarketCoin } from "@/types/market";
 const DEFAULT_THRESHOLD = -2;
 const COOLDOWN_MS = 60_000;
 
-const lastAlertAt = new Map<string, number>();
-
 type UserThreshold = {
   userId: string;
   threshold: number;
 };
 
-// Get each user's "alert me if drop is worse than X%" setting.
 async function loadUserThresholds(): Promise<UserThreshold[]> {
   const users = await prisma.user.findMany({
     select: {
@@ -28,21 +25,29 @@ async function loadUserThresholds(): Promise<UserThreshold[]> {
   }));
 }
 
-// Unique key so we don't fire the same alert twice in a row.
 function cooldownKey(userId: string, assetId: string) {
   return `${userId}:${assetId}`;
 }
 
-// If a coin dropped too fast, create an alert for affected users.
+async function loadRecentAlertCooldowns(): Promise<Set<string>> {
+  const since = new Date(Date.now() - COOLDOWN_MS);
+  const rows = await prisma.cryptoAlert.findMany({
+    where: { detected_at: { gte: since } },
+    select: { user_id: true, asset_id: true },
+  });
+  return new Set(rows.map((row) => cooldownKey(row.user_id, row.asset_id)));
+}
+
 export async function detectFlashCrashes(
   current: MarketCoin[],
   baseline: Map<string, number>,
 ): Promise<number> {
   const userThresholds = await loadUserThresholds();
   if (userThresholds.length === 0) return 0;
+  if (baseline.size === 0) return 0;
 
+  const cooldowns = await loadRecentAlertCooldowns();
   let created = 0;
-  const now = Date.now();
 
   for (const coin of current) {
     const prev = baseline.get(coin.id);
@@ -54,8 +59,7 @@ export async function detectFlashCrashes(
       if (dropPct > threshold) continue;
 
       const key = cooldownKey(userId, coin.id);
-      const last = lastAlertAt.get(key) ?? 0;
-      if (now - last < COOLDOWN_MS) continue;
+      if (cooldowns.has(key)) continue;
 
       try {
         const alert = await prisma.cryptoAlert.create({
@@ -68,7 +72,7 @@ export async function detectFlashCrashes(
             drop_percentage: dropPct,
           },
         });
-        lastAlertAt.set(key, now);
+        cooldowns.add(key);
         created += 1;
         logAlertTriggered({
           alertId: alert.id,

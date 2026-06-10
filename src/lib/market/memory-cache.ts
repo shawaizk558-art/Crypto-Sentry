@@ -62,6 +62,30 @@ export function getCoinsByIds(ids: string[]): MarketCoin[] {
   return getStore().coins.filter((c) => set.has(c.id));
 }
 
+// Seed in-memory cache from Postgres (cron writes, UI reads on cold start).
+export function hydrateMarketCache(coins: MarketCoin[], updatedAtMs: number) {
+  const store = getStore();
+  const now = Date.now();
+  const ageMs = now - updatedAtMs;
+  const stale = ageMs > STALE_AFTER_MS;
+
+  store.coins = coins;
+  store.meta = {
+    ...store.meta,
+    updatedAt: updatedAtMs,
+    fetchedAt: now,
+    stale,
+    source: stale ? "stale" : "live",
+    coinCount: coins.length,
+    lastError: null,
+    lastSuccessAt: updatedAtMs,
+  };
+
+  if (!stale) {
+    notifyPriceCacheUpdated(updatedAtMs, coins.length);
+  }
+}
+
 // Save new prices into memory after a fetch.
 export function updateMarketCache(
   nextCoins: MarketCoin[],

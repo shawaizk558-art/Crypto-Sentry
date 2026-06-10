@@ -10,32 +10,41 @@ import {
   getMarketSnapshot,
   updateMarketCache,
 } from "@/lib/market/memory-cache";
+import {
+  baselineRecordToMap,
+  coinsToBaselineRecord,
+  loadPersistedSnapshot,
+  savePersistedSnapshot,
+} from "@/lib/market/snapshot-store";
 
-/** Fetches fresh prices from CoinGecko, detects flash crashes, and updates the in-memory cache. */
+/** Fetches fresh prices from CoinGecko, detects flash crashes, and updates caches. */
+
+export type PriceRefreshResult = {
+  coinCount: number;
+  alertsCreated: number;
+  skipped: boolean;
+};
 
 type RefreshGlobals = typeof globalThis & {
   __lastCoingeckoFetchAt?: number;
-  __priceRefreshInFlight?: Promise<void>;
+  __priceRefreshInFlight?: Promise<PriceRefreshResult>;
 };
 
-// Shared flag so two fetches don't run at the same time.
 function refreshGlobal() {
   return globalThis as RefreshGlobals;
 }
 
-// Prices from last time — compare to spot sudden drops.
-function getPreviousBaseline() {
-  const g = globalThis as typeof globalThis & {
-    __marketPreviousBaseline?: Map<string, number>;
-  };
-  if (!g.__marketPreviousBaseline) {
-    g.__marketPreviousBaseline = new Map();
-  }
-  return g.__marketPreviousBaseline;
+async function resolvePreviousBaseline(): Promise<Map<string, number>> {
+  const memoryBaseline = getBaselinePrices();
+  if (memoryBaseline.size > 0) return memoryBaseline;
+
+  const persisted = await loadPersistedSnapshot();
+  if (persisted) return baselineRecordToMap(persisted.baseline);
+
+  return new Map();
 }
 
-// Get new prices from CoinGecko, check for crashes, save to memory.
-async function applyPriceRefresh() {
+async function applyPriceRefresh(): Promise<PriceRefreshResult> {
   const snapshot = getMarketSnapshot();
 
   if (isRateLimitCooldownActive()) {
@@ -43,13 +52,7 @@ async function applyPriceRefresh() {
     return { coinCount: snapshot.coins.length, alertsCreated: 0, skipped: true };
   }
 
-  const previousBaseline = getPreviousBaseline();
-  const baseline = getBaselinePrices();
-  if (baseline.size > 0) {
-    previousBaseline.clear();
-    for (const [id, price] of baseline) previousBaseline.set(id, price);
-  }
-
+  const previousBaseline = await resolvePreviousBaseline();
   let nextCoins = snapshot.coins;
 
   try {
@@ -68,8 +71,8 @@ async function applyPriceRefresh() {
   const alerts = await detectFlashCrashes(nextCoins, previousBaseline);
   updateMarketCache(nextCoins, { source: "live", error: null });
 
-  previousBaseline.clear();
-  for (const c of nextCoins) previousBaseline.set(c.id, c.current_price);
+  const baseline = coinsToBaselineRecord(nextCoins);
+  await savePersistedSnapshot(nextCoins, baseline);
 
   refreshGlobal().__lastCoingeckoFetchAt = Date.now();
 
@@ -91,25 +94,28 @@ async function applyPriceRefresh() {
   return { coinCount: nextCoins.length, alertsCreated: alerts, skipped: false };
 }
 
-// Fetch prices. If already fetching, wait for that one to finish.
-export async function refreshPricesFromApi(): Promise<void> {
+export async function refreshPricesFromApi(): Promise<PriceRefreshResult> {
   const g = refreshGlobal();
   if (g.__priceRefreshInFlight) {
-    await g.__priceRefreshInFlight;
-    return;
+    return g.__priceRefreshInFlight;
   }
 
   g.__priceRefreshInFlight = (async () => {
     try {
-      await applyPriceRefresh();
+      return await applyPriceRefresh();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const snapshot = getMarketSnapshot();
       applyStaleCacheFallback(snapshot.coins, message);
+      return {
+        coinCount: snapshot.coins.length,
+        alertsCreated: 0,
+        skipped: true,
+      };
     } finally {
       g.__priceRefreshInFlight = undefined;
     }
   })();
 
-  await g.__priceRefreshInFlight;
+  return g.__priceRefreshInFlight;
 }

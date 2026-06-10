@@ -39,7 +39,7 @@ export function AlertsFeed() {
     <div className="page-container">
       <PageHeader
         title="Alert Log"
-        description="Live flash-crash detections from the in-process surveillance poller (30s cycles)."
+        description="Flash-crash alerts saved while you were away — refreshed when prices update."
         action={
           <button
             type="button"

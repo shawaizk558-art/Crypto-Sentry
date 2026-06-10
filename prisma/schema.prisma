@@ -91,3 +91,11 @@ model SystemLog {
 
   @@index([created_at])
 }
+
+// Single-row store for cron polling: latest prices + baseline for crash detection.
+model MarketPriceSnapshot {
+  id         String   @id @default("global")
+  coins      Json
+  baseline   Json
+  updated_at DateTime @updatedAt
+}
