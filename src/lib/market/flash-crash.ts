@@ -82,7 +82,7 @@ export async function detectFlashCrashes(
         });
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
-        logger.error(
+        await logger.error(
           `Alert could not be saved for ${coin.name} (user ${userId}) at $${coin.current_price} — ${detail}`,
         );
       }

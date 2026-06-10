@@ -78,7 +78,7 @@ export async function fetchTop100Markets(): Promise<MarketCoin[]> {
   const res = await fetchOnce(url);
 
   if (res.status === 429) {
-    markRateLimitCooldown();
+    await markRateLimitCooldown();
     throw new Error("markets rate limited");
   }
   if (!res.ok) {

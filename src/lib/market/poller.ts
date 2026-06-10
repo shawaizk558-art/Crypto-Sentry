@@ -57,7 +57,7 @@ export function ensureMarketPollerStarted() {
   g.__marketPollerStarted = true;
 
   const sec = Math.round(pollIntervalMs() / 1000);
-  logger.info(
+  void logger.info(
     `CoinGecko: 1 call every ${sec}s (top 100) → memory cache. UI reads cache via /api/prices (SSE).`,
   );
 
@@ -77,7 +77,7 @@ export async function ensureMarketCacheWarm(): Promise<MarketCacheSnapshot> {
   snapshot = getMarketSnapshot();
   if (snapshot.coins.length > 0) return snapshot;
 
-  logger.warn("No prices loaded yet — fetching from CoinGecko now…");
+  await logger.warn("No prices loaded yet — fetching from CoinGecko now…");
   await runPollCycle();
   snapshot = getMarketSnapshot();
 

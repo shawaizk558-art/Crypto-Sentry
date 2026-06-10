@@ -48,7 +48,7 @@ async function applyPriceRefresh(): Promise<PriceRefreshResult> {
   const snapshot = getMarketSnapshot();
 
   if (isRateLimitCooldownActive()) {
-    applyStaleCacheFallback(snapshot.coins, "Rate limit cooldown");
+    await applyStaleCacheFallback(snapshot.coins, "Rate limit cooldown");
     return { coinCount: snapshot.coins.length, alertsCreated: 0, skipped: true };
   }
 
@@ -59,7 +59,7 @@ async function applyPriceRefresh(): Promise<PriceRefreshResult> {
     nextCoins = await fetchTop100Markets();
   } catch (err) {
     if (snapshot.coins.length > 0) {
-      applyStaleCacheFallback(
+      await applyStaleCacheFallback(
         snapshot.coins,
         err instanceof Error ? err.message : String(err),
       );
@@ -82,11 +82,11 @@ async function applyPriceRefresh(): Promise<PriceRefreshResult> {
     : "";
 
   if (alerts > 0) {
-    logger.info(
+    await logger.info(
       `Cache saved — ${nextCoins.length} coins (1 CoinGecko call).${btcLine} ${alerts} new alert(s).`,
     );
   } else {
-    logger.info(
+    await logger.info(
       `Prices updated — ${nextCoins.length} coins (1 CoinGecko call).${btcLine}`,
     );
   }
@@ -106,7 +106,7 @@ export async function refreshPricesFromApi(): Promise<PriceRefreshResult> {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const snapshot = getMarketSnapshot();
-      applyStaleCacheFallback(snapshot.coins, message);
+      await applyStaleCacheFallback(snapshot.coins, message);
       return {
         coinCount: snapshot.coins.length,
         alertsCreated: 0,

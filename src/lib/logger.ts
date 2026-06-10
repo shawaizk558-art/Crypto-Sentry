@@ -20,17 +20,14 @@ const LEVEL_PREFIX: Record<LogLevel, string> = {
   debug: "DEBUG",
 };
 
-// Turn a date into a time string like 14:30:05.
 function formatTime(at: Date): string {
   return at.toLocaleTimeString("en-GB", { hour12: false });
 }
 
-// Build one line of text for the terminal log.
 export function formatSystemLogLine(level: LogLevel, msg: string, at = new Date()): string {
   return `[${formatTime(at)}] ${LEVEL_PREFIX[level]} ${msg}`;
 }
 
-// Build a log object from message, level, and time.
 function toSystemLogEntry(level: LogLevel, msg: string, at: Date): SystemLogEntry {
   return {
     ts: at.toISOString(),
@@ -40,14 +37,15 @@ function toSystemLogEntry(level: LogLevel, msg: string, at: Date): SystemLogEntr
   };
 }
 
-// Save log to database and print to console.
-function write(level: LogLevel, msg: string) {
+async function write(level: LogLevel, msg: string): Promise<void> {
   const at = new Date();
   const line = formatSystemLogLine(level, msg, at);
 
-  void persistSystemLog(level, msg).catch((err: unknown) => {
+  try {
+    await persistSystemLog(level, msg);
+  } catch (err: unknown) {
     console.error("[logger] Failed to persist system log:", err);
-  });
+  }
 
   if (level === "error") {
     console.error(line);
@@ -60,21 +58,17 @@ function write(level: LogLevel, msg: string) {
   }
 }
 
-/** Operational / poller logs — not flash-crash alerts. */
+/** Operational / poller logs — persisted to SystemLog before returning. */
 export const logger = {
-  // Log a normal info message.
   info: (msg: string) => write("info", msg),
-  // Log a warning message.
   warn: (msg: string) => write("warn", msg),
-  // Log an error message.
   error: (msg: string) => write("error", msg),
-  // Log a debug message (only when LOG_VERBOSE=1).
   debug: (msg: string) => {
-    if (VERBOSE) write("debug", msg);
+    if (VERBOSE) return write("debug", msg);
+    return Promise.resolve();
   },
 };
 
-// Load recent system logs from the database.
 export async function getRecentSystemLogs(limit = 50): Promise<SystemLogEntry[]> {
   const rows = await fetchRecentSystemLogs(limit);
 
@@ -83,7 +77,6 @@ export async function getRecentSystemLogs(limit = 50): Promise<SystemLogEntry[]>
   );
 }
 
-// Load recent logs as ready-to-print text lines.
 export async function getRecentSystemLogLines(limit = 50): Promise<string[]> {
   const logs = await getRecentSystemLogs(limit);
   return logs.map((entry) => entry.line);
