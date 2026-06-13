@@ -1,6 +1,4 @@
-import { WatchlistView } from "@/components/watchlist/watchlist-view";
-
-// Watchlist page route for tracked assets.
+// Route anchor for /watchlist. Content renders via AppContentRouter in the app layout.
 export default function WatchlistPage() {
-  return <WatchlistView />;
+  return null;
 }

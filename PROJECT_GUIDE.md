@@ -20,7 +20,7 @@ This document explains **what** the project uses, **why** it uses it, and **how*
 12. [Settings](#12-settings)
 13. [API routes](#13-api-routes)
 14. [Logging & debugging](#14-logging--debugging)
-15. [Deployment (Vercel + Supabase)](#15-deployment-vercel--supabase)
+15. [Deployment (Vercel + PostgreSQL)](#15-deployment-vercel--postgresql)
 16. [Commands & common tasks](#16-commands--common-tasks)
 17. [Known limitations on serverless](#17-known-limitations-on-serverless)
 
@@ -47,10 +47,9 @@ The UI uses a cyber/terminal aesthetic. All dashboard pages require authenticati
 | **React 19** | UI library | Component model for dashboard, auth forms, and live price widgets |
 | **TypeScript** | Typed JavaScript | Safer refactors across API routes, Prisma, and UI |
 | **Tailwind CSS 4** | Utility-first styling | Fast theming (`globals.css` tokens) and responsive layout |
-| **Supabase Auth** | User sign-up, login, OAuth, sessions | Managed auth with cookies; no custom password hashing or JWT logic |
-| **Supabase Storage** | Profile photo uploads | Public `avatars` bucket with RLS policies |
-| **Supabase PostgreSQL** | Hosted Postgres | Same project as Auth; connection via pooler for serverless |
-| **Prisma 7** | ORM + migrations | Type-safe queries for `Watchlist` and `CryptoAlert` tables |
+| **NextAuth (Auth.js)** | User sign-up, login, OAuth, sessions | Credentials + Google providers; Prisma adapter for users/sessions |
+| **PostgreSQL** | Primary database | Users, watchlists, alerts, avatars (via Prisma) |
+| **Prisma 7** | ORM + migrations | Type-safe queries for all app tables |
 | **`pg` + `@prisma/adapter-pg`** | Postgres driver adapter | Prisma 7 driver adapter for Node/serverless connections |
 | **CoinGecko API** | Market prices | Top-100 coins in a single API call per poll cycle |
 | **Server-Sent Events (SSE)** | Push price updates to browser | Browser refetches `/api/prices` only when cache changes (~30s) |
@@ -80,31 +79,29 @@ flowchart TB
     POLL -->|every 30s| CG
     POLL --> CACHE
     API --> CACHE
-    MW -->|session check| SB_AUTH
+    MW -->|session check| AUTH
   end
 
   subgraph External
     CG[CoinGecko API]
-    SB_AUTH[Supabase Auth]
-    SB_DB[(Supabase PostgreSQL)]
-    SB_STORAGE[Supabase Storage avatars]
+    AUTH[NextAuth]
+    PG[(PostgreSQL)]
   end
 
   UI --> MW
-  API --> SB_DB
-  POLL -->|flash crash| SB_DB
-  UI --> SB_AUTH
-  UI --> SB_STORAGE
+  API --> PG
+  POLL -->|flash crash| PG
+  UI --> AUTH
 ```
 
 **Request flow (simplified):**
 
-1. User opens dashboard → **middleware** checks Supabase session cookie.
+1. User opens dashboard → **middleware** checks NextAuth session cookie.
 2. UI connects to **SSE** and loads **cached prices** from `/api/prices`.
 3. Background **poller** (started in `instrumentation.ts`) fetches CoinGecko every 30s.
 4. New prices go into **memory cache** → SSE notifies browsers → UI refetches.
 5. Large drops create **`CryptoAlert`** rows in Postgres.
-6. Watchlist reads/writes **`Watchlist`** rows keyed by Supabase `user.id`.
+6. Watchlist reads/writes **`Watchlist`** rows keyed by the local `User.id`.
 
 ---
 
@@ -115,8 +112,7 @@ Crypto Sentry/
 ├── prisma/
 │   ├── schema.prisma          # Watchlist + CryptoAlert models
 │   └── migrations/            # SQL migration history
-├── supabase/
-│   └── avatars-bucket.sql       # One-time Storage bucket + RLS setup
+├── docker-compose.yml           # Local PostgreSQL
 ├── src/
 │   ├── app/
 │   │   ├── (app)/               # Protected dashboard (sidebar layout)
@@ -134,7 +130,6 @@ Crypto Sentry/
 │   ├── hooks/
 │   │   └── use-live-prices.ts   # SSE + /api/prices client hook
 │   ├── lib/
-│   │   ├── supabase/            # Browser + server clients, middleware session
 │   │   ├── db/                  # Prisma client + watchlist helpers
 │   │   ├── market/              # Poller, cache, CoinGecko fetch, flash-crash
 │   │   ├── auth/                # Email verified flag, profile helpers
@@ -144,7 +139,7 @@ Crypto Sentry/
 │   └── instrumentation.ts       # Starts market poller on Node boot
 ├── .env.example                 # Required env template
 ├── prisma.config.ts             # Prisma 7 datasource config
-└── next.config.ts               # Images (CoinGecko, Google, Supabase storage)
+└── next.config.ts               # Images (CoinGecko, Google)
 ```
 
 ---
@@ -155,10 +150,11 @@ Copy `.env.example` to `.env` locally. On Vercel, set the same keys in **Project
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `DATABASE_URL` | Yes | Supabase **pooler** URL for Prisma at runtime |
-| `DIRECT_URL` | Optional | Direct Postgres URL if `migrate deploy` fails via pooler |
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL (also used at **build** for image domains) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Public anon key for Supabase client |
+| `DATABASE_URL` | Yes | PostgreSQL connection string for Prisma |
+| `DATABASE_POOL_MAX` | No | Max pool connections (default 2; raise for local Docker) |
+| `AUTH_SECRET` | Yes | NextAuth session encryption secret |
+| `AUTH_URL` / `NEXTAUTH_URL` | Yes | App base URL (e.g. `http://localhost:3000`) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth credentials |
 | `COINGECKO_API_BASE_URL` | Yes | e.g. `https://api.coingecko.com/api/v3` |
 | `COINGECKO_MARKETS_PATH` | Yes | e.g. `/coins/markets` |
 | `COINGECKO_API_KEY` | No | Empty = free tier; set for demo/pro API |
@@ -166,8 +162,7 @@ Copy `.env.example` to `.env` locally. On Vercel, set the same keys in **Project
 | `MARKET_POLL_INTERVAL_MS` | No | Default 30000; minimum 30000 |
 | `LOG_VERBOSE` | No | Set to `1` for debug-level logs |
 
-**Why two database URLs?**  
-Serverless apps use the **connection pooler** (`DATABASE_URL`) for many short-lived connections. Migrations sometimes need the **direct** host (`DIRECT_URL`).
+**Local database:** Run `npm run db:up` to start PostgreSQL via Docker Compose, then `npx prisma migrate dev`.
 
 ---
 
@@ -180,7 +175,7 @@ Prisma manages two app tables in the **`public`** schema:
 | Column | Type | Meaning |
 |--------|------|---------|
 | `id` | String (cuid) | Row primary key |
-| `user_id` | String | Supabase Auth user UUID |
+| `user_id` | String | Local `User.id` (FK) |
 | `asset_id` | String | CoinGecko coin id (e.g. `bitcoin`) |
 | `asset_name` | String | Display name |
 | `added_at` | DateTime | When added |
@@ -204,17 +199,12 @@ Alerts are **global** (not per-user) — any flash crash is stored once.
 
 | Data | Stored in |
 |------|-----------|
-| User accounts | Supabase `auth.users` |
-| Profile name / avatar URL | Supabase `user.user_metadata` |
-| Avatar image files | Supabase Storage `avatars` bucket |
-| App settings (threshold, UI) | Browser `localStorage` |
+| App settings (threshold, UI) | `UserSettings` table + browser `localStorage` for some UI prefs |
 | Live coin prices | Server in-memory cache only |
 
-### Viewing data in Supabase Dashboard
+### Viewing data
 
-- **Users:** Authentication → Users (or Table Editor → schema **`auth`** → `users`)
-- **Watchlist / Alerts:** Table Editor → schema **`public`** → `Watchlist` / `CryptoAlert`
-- **Avatars:** Storage → `avatars`
+Use `npx prisma studio` or any PostgreSQL client. Main tables: `User`, `Watchlist`, `CryptoAlert`, `UserSettings`.
 
 ### Migrations
 
@@ -228,19 +218,16 @@ npx prisma generate          # Regenerate client (also runs on npm postinstall)
 
 ## 7. Authentication
 
-Auth is handled entirely by **Supabase**. The app never stores passwords in its own tables.
+Auth is handled by **NextAuth (Auth.js)** with the **Prisma adapter**. User rows live in the `User` table; passwords are stored as bcrypt hashes in `password_hash`.
 
-### Supabase clients
+### Key files
 
-| File | Runtime | Purpose |
-|------|---------|---------|
-| `src/lib/supabase/client.ts` | Browser | Login forms, Google OAuth, profile updates |
-| `src/lib/supabase/server.ts` | Server (RSC, API) | Read session from cookies |
-| `src/lib/supabase/middleware.ts` | Edge middleware | Refresh session + route protection |
-| `src/lib/supabase/session.ts` | Server | `getSessionUser()` / `requireSessionUser()` |
-
-**Why `@supabase/ssr`?**  
-It syncs auth tokens via **HTTP cookies** so server components and API routes see the same session as the browser.
+| File | Purpose |
+|------|---------|
+| `src/auth.ts` | NextAuth config, Credentials + Google providers |
+| `src/auth.config.ts` | Shared auth config for middleware |
+| `src/lib/auth/session.ts` | `getSessionUser()` / `requireSessionUser()` |
+| `src/middleware.ts` | Route protection via NextAuth session |
 
 ### Middleware gate (`src/middleware.ts`)
 
@@ -249,59 +236,40 @@ Runs on every request except static assets.
 | Condition | Action |
 |-----------|--------|
 | No user + not on `/auth/*` | Redirect to `/auth/login?next=...` |
-| User + email not verified (non-Google) | Redirect to `/auth/verify-email` |
-| Verified user on login/signup pages | Redirect to `/` |
-
-Email verification flag: `user_metadata.email_verified_app = true` (see `src/lib/auth/email-verified.ts`). Google users skip OTP.
+| Logged-in user on login/signup pages | Redirect to `/` |
+| Unauthenticated API (except public routes) | `401 Unauthorized` |
 
 ### Sign-up flow (email + password)
 
 ```
-User fills signup form
-    → supabase.auth.signUp({ email, password, metadata: { email_verified_app: false } })
-    → supabase.auth.signInWithOtp({ email })   // sends 6-digit code
-    → User enters code on verify step
-    → supabase.auth.verifyOtp({ email, token, type: "signup" | "email" })
-    → supabase.auth.updateUser({ data: { email_verified_app: true } })
-    → router.push("/") + middleware allows dashboard
+User fills signup form → POST /api/auth/signup
+    → bcrypt hash password → insert User row
+    → signIn("credentials") → session cookie
 ```
-
-**Why OTP after signUp?**  
-Supabase email signup creates the account; a second OTP step proves email ownership before granting dashboard access.
 
 ### Login flow (email + password)
 
 ```
-User submits login form
-    → supabase.auth.signInWithPassword({ email, password })
-    → router.push(next || "/")
-    → middleware checks email_verified_app (or Google bypass)
+User submits login form → signIn("credentials", { email, password })
+    → NextAuth authorize() verifies bcrypt hash
+    → session cookie set → redirect to dashboard
 ```
 
 ### Google OAuth flow
 
 ```
 User clicks "Sign in with Google"
-    → redirectTo = window.location.origin + "/auth/callback"
-    → supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } })
-    → Browser → Google → Supabase → /auth/callback?code=...
-    → route exchanges code for session (exchangeCodeForSession)
-    → Sets email_verified_app = true for Google users
-    → Redirect to home
+    → signIn("google") via next-auth/react
+    → Google → /api/auth/callback/google
+    → Prisma adapter creates/links User + Account rows
 ```
 
-**Supabase dashboard must allow your production URL** in Site URL + Redirect URLs, or OAuth falls back to `localhost`.
+Configure **Authorized redirect URI** in Google Cloud Console:  
+`https://your-domain/api/auth/callback/google`
 
 ### Sign out
 
-`POST /auth/signout` → `supabase.auth.signOut()` → redirect to `/auth/login`.
-
-### One-time Supabase setup
-
-1. **Auth → Providers:** Enable Email (signups) and Google (OAuth client).
-2. **Auth → Email:** Enable Email OTP (6-digit codes).
-3. **Auth → URL Configuration:** Site URL + redirect URLs for localhost and Vercel.
-4. **SQL Editor:** Run `supabase/avatars-bucket.sql` for profile photos.
+NextAuth `signOut()` from the UI, or session cleared via `/api/auth/signout`.
 
 ---
 
@@ -425,7 +393,7 @@ For each coin in the new snapshot:
 - `POST /api/watchlist` — body: `{ assetId, assetName }` → Prisma upsert.
 - `DELETE /api/watchlist/[assetId]` — remove row.
 
-`user_id` is the Supabase Auth UUID (`user.id`), not a local `User` table.
+`user_id` references the local `User.id` (foreign key).
 
 ### Watchlist page
 
@@ -443,21 +411,20 @@ For each coin in the new snapshot:
 
 ### Display name
 
-- From `user_metadata.full_name`, or email prefix, or `"Operative"`.
+- From `User.name`, or email prefix, or `"Operative"`.
 
 ### Update name
 
-Client calls `supabase.auth.updateUser({ data: { full_name } })`.
+`PATCH /api/user/profile` updates the `User.name` column.
 
 ### Avatar upload
 
 1. Validate file (JPEG/PNG/WebP/GIF, max 2 MB).
-2. Upload to Supabase Storage: `avatars/{userId}/avatar.{ext}`.
-3. Get public URL.
-4. Save URL in `user_metadata.avatar_url`.
-5. `next.config.ts` allows images from your Supabase storage hostname.
+2. `POST /api/user/avatar` saves bytes to `User.avatar_data` / `avatar_mime`.
+3. `User.image` is set to `/api/avatars/{userId}`.
+4. `GET /api/avatars/{userId}` serves the image from PostgreSQL (public route).
 
-**Prerequisite:** Run `supabase/avatars-bucket.sql` once in Supabase SQL Editor.
+Google OAuth users keep their external `image` URL until they upload a custom avatar.
 
 ---
 
@@ -511,46 +478,36 @@ All live market responses use `Cache-Control: no-store` (`jsonLive` helper).
 | Local `npm run dev` | Terminal running the dev server |
 | Vercel production | Project → **Logs** (runtime logs) |
 | In-app market logs | `GET /api/market/status?logs=1` |
-| Auth issues | Supabase → Authentication → **Logs** |
+| Auth issues | Check NextAuth logs in Vercel runtime / server console |
 
 ### Database inspection
 
-- **`public` schema** → `Watchlist`, `CryptoAlert`
-- **`auth` schema** → `users` (read-only in Table Editor)
+- `npx prisma studio` or connect to `DATABASE_URL` with any Postgres client
 
 ---
 
-## 15. Deployment (Vercel + Supabase)
+## 15. Deployment (Vercel + PostgreSQL)
 
 ### Vercel
 
 1. Import GitHub repo `Crypto-Sentry`.
 2. Framework: **Next.js** (auto-detected).
-3. Add all env vars from `.env.example`.
-4. Deploy.
+3. Provision PostgreSQL (Neon, Railway, Vercel Postgres, etc.) and set `DATABASE_URL`.
+4. Add all env vars from `.env.example`.
+5. Deploy.
 
-Build runs `postinstall` → `prisma generate` automatically.
+Build runs `prisma generate` + `prisma migrate deploy` + `next build` via `npm run build`.
 
-**Optional build command for migrations:**
-
-```bash
-prisma migrate deploy && next build
-```
-
-### Supabase production config
+### Google OAuth production config
 
 | Setting | Value |
 |---------|-------|
-| Site URL | `https://your-app.vercel.app` |
-| Redirect URLs | Vercel URL + `/auth/callback` + localhost for dev |
-| Google OAuth | Redirect URI: `https://PROJECT_REF.supabase.co/auth/v1/callback` |
+| Authorized redirect URI | `https://your-app.vercel.app/api/auth/callback/google` |
 
 ### After first deploy
 
-1. Run `npx prisma migrate deploy` against production `DATABASE_URL` if tables missing.
-2. Run `supabase/avatars-bucket.sql` in SQL Editor.
-3. Confirm `public.Watchlist` appears in Table Editor.
-4. Test login (incognito) on Vercel URL.
+1. Confirm migrations applied (`prisma migrate deploy` runs on build).
+2. Test sign-up and login (incognito) on the production URL.
 
 ---
 
@@ -559,8 +516,9 @@ prisma migrate deploy && next build
 ```bash
 # Development
 npm install
-cp .env.example .env        # fill in Supabase + CoinGecko values
-npx prisma migrate dev        # apply migrations locally
+npm run db:up                 # start local PostgreSQL (Docker)
+cp .env.example .env          # fill in DATABASE_URL + auth secrets
+npx prisma migrate dev          # apply migrations locally
 npm run dev                   # http://localhost:3000
 
 # Production build (local test)
@@ -579,9 +537,9 @@ npm run lint
 
 | Problem | Fix |
 |---------|-----|
-| Login redirects to localhost | Update Supabase Site URL + Redirect URLs to Vercel domain |
-| No `Watchlist` table in Supabase | Run `prisma migrate deploy` on production DB |
-| Avatar upload "Bucket not found" | Run `supabase/avatars-bucket.sql` |
+| `DATABASE_URL` connection refused | Start Postgres (`npm run db:up`) or check hosted DB credentials |
+| Missing tables | Run `npx prisma migrate deploy` on production DB |
+| Google login fails | Match redirect URI in Google Console to `AUTH_URL` + `/api/auth/callback/google` |
 | Empty prices on first load | Wait ~30s for poller; check `/api/market/status?logs=1` |
 | CoinGecko 429 | Automatic 120s cooldown; shows stale cache |
 
@@ -603,7 +561,7 @@ For a demo or small deployment this is acceptable. For production scale, conside
 ## End-to-end example: user adds Bitcoin to watchlist
 
 ```
-1. User logs in → Supabase session cookie set → middleware allows /market
+1. User logs in → NextAuth session cookie set → middleware allows /market
 2. Market page loads → useLivePrices() → GET /api/prices (cache) + SSE connect
 3. User clicks star on Bitcoin → POST /api/watchlist { assetId: "bitcoin", assetName: "Bitcoin" }
 4. API reads session → user.id → Prisma upsert into Watchlist

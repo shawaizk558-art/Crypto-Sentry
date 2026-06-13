@@ -8,6 +8,7 @@ const { auth } = NextAuth(authConfig);
 export default auth((request) => {
   const { pathname } = request.nextUrl;
   const isLoggedIn = !!request.auth?.user?.id;
+  const emailVerified = request.auth?.user?.hasVerifiedEmail === true;
 
   const isAuthPage =
     pathname.startsWith("/auth") ||
@@ -16,6 +17,7 @@ export default auth((request) => {
 
   const isPublicApi =
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/avatars") ||
     pathname.startsWith("/api/prices") ||
     pathname.startsWith("/api/market") ||
     pathname.startsWith("/api/cron");
@@ -36,12 +38,21 @@ export default auth((request) => {
     return NextResponse.redirect(login);
   }
 
+  if (isLoggedIn && !emailVerified) {
+    if (pathname !== "/auth/verify-email") {
+      return NextResponse.redirect(new URL("/auth/verify-email", request.url));
+    }
+    return NextResponse.next();
+  }
+
   if (
     isLoggedIn &&
+    emailVerified &&
     (pathname === "/auth/login" ||
       pathname === "/auth/signup" ||
       pathname === "/login" ||
-      pathname === "/signup")
+      pathname === "/signup" ||
+      pathname === "/auth/verify-email")
   ) {
     return NextResponse.redirect(new URL("/", request.url));
   }

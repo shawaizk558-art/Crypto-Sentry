@@ -8,23 +8,33 @@ import { useState } from "react";
 type GoogleSignInButtonProps = {
   label?: string;
   variant?: "outline" | "primary";
+  intent?: "signup" | "login";
+  callbackUrl?: string;
 };
 
 // Button that initiates Google OAuth sign-in via NextAuth.
 export function GoogleSignInButton({
   label = "Continue with Google",
   variant = "outline",
+  intent = "login",
+  callbackUrl = "/",
 }: GoogleSignInButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Redirects the user to Google's OAuth consent screen.
   async function signInWithGoogle() {
     setLoading(true);
     setError(null);
 
     try {
-      const result = await signIn("google", { callbackUrl: "/", redirect: false });
+      await fetch("/api/auth/oauth-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent }),
+      });
+
+      const destination = intent === "signup" ? "/auth/verify-email" : callbackUrl;
+      const result = await signIn("google", { callbackUrl: destination, redirect: false });
 
       if (result?.error) {
         setError(
@@ -77,7 +87,6 @@ export function GoogleSignInButton({
   );
 }
 
-// Renders the multicolor Google logo SVG.
 function GoogleIcon() {
   return (
     <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>

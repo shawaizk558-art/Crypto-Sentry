@@ -1,5 +1,6 @@
 import { requireSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { getUserWatchlist } from "@/lib/db/watchlist";
 import type { AlertSeverity } from "@/types/alerts";
 import { NextResponse } from "next/server";
 
@@ -19,9 +20,23 @@ export async function GET(request: Request) {
       Number.parseInt(searchParams.get("limit") ?? "50", 10) || 50,
       100,
     );
+    const watchlistOnly = searchParams.get("watchlistOnly") === "true";
+
+    let assetFilter: { in: string[] } | undefined;
+    if (watchlistOnly) {
+      const watchlist = await getUserWatchlist(user.id);
+      const assetIds = watchlist.map((row) => row.asset_id);
+      if (assetIds.length === 0) {
+        return NextResponse.json({ alerts: [], watchlistEmpty: true });
+      }
+      assetFilter = { in: assetIds };
+    }
 
     const rows = await prisma.cryptoAlert.findMany({
-      where: { user_id: user.id },
+      where: {
+        user_id: user.id,
+        ...(assetFilter ? { asset_id: assetFilter } : {}),
+      },
       orderBy: { detected_at: "desc" },
       take: limit,
     });

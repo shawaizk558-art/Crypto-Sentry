@@ -11,6 +11,7 @@ type UserThreshold = {
   threshold: number;
 };
 
+/** Loads each user's alert threshold from the DB (default -2% if unset). */
 async function loadUserThresholds(): Promise<UserThreshold[]> {
   const users = await prisma.user.findMany({
     select: {
@@ -25,10 +26,12 @@ async function loadUserThresholds(): Promise<UserThreshold[]> {
   }));
 }
 
+/** Builds a unique key for per-user, per-asset alert cooldown tracking. */
 function cooldownKey(userId: string, assetId: string) {
   return `${userId}:${assetId}`;
 }
 
+/** Returns user+asset pairs that already triggered an alert in the last 60 seconds. */
 async function loadRecentAlertCooldowns(): Promise<Set<string>> {
   const since = new Date(Date.now() - COOLDOWN_MS);
   const rows = await prisma.cryptoAlert.findMany({
@@ -38,6 +41,7 @@ async function loadRecentAlertCooldowns(): Promise<Set<string>> {
   return new Set(rows.map((row) => cooldownKey(row.user_id, row.asset_id)));
 }
 
+/** Compares current prices to baseline and creates alerts when drop exceeds user thresholds. */
 export async function detectFlashCrashes(
   current: MarketCoin[],
   baseline: Map<string, number>,

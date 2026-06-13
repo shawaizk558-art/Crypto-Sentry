@@ -30,10 +30,12 @@ type RefreshGlobals = typeof globalThis & {
   __priceRefreshInFlight?: Promise<PriceRefreshResult>;
 };
 
+/** Typed access to in-flight refresh state stored on globalThis. */
 function refreshGlobal() {
   return globalThis as RefreshGlobals;
 }
 
+/** Returns the last known prices: memory cache first, then Postgres snapshot, else empty. */
 async function resolvePreviousBaseline(): Promise<Map<string, number>> {
   const memoryBaseline = getBaselinePrices();
   if (memoryBaseline.size > 0) return memoryBaseline;
@@ -44,6 +46,7 @@ async function resolvePreviousBaseline(): Promise<Map<string, number>> {
   return new Map();
 }
 
+/** Fetches live prices, detects crashes vs baseline, updates memory + DB cache. */
 async function applyPriceRefresh(): Promise<PriceRefreshResult> {
   const snapshot = getMarketSnapshot();
 
@@ -94,6 +97,7 @@ async function applyPriceRefresh(): Promise<PriceRefreshResult> {
   return { coinCount: nextCoins.length, alertsCreated: alerts, skipped: false };
 }
 
+/** Public entry: deduplicates concurrent calls so only one refresh runs at a time. */
 export async function refreshPricesFromApi(): Promise<PriceRefreshResult> {
   const g = refreshGlobal();
   if (g.__priceRefreshInFlight) {

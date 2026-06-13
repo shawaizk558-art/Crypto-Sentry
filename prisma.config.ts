@@ -9,7 +9,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    // Migrations use this URL (pooler works on IPv4; use DIRECT_URL in .env if migrate fails)
     url: process.env["DATABASE_URL"],
   },
 });

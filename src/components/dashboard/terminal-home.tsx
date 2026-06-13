@@ -215,7 +215,7 @@ export function TerminalHome() {
           </div>
         </div>
 
-        {loading ? (
+        {loading && terminalAssets.length === 0 ? (
           <div className="card-surface flex items-center justify-center p-8 xl:col-span-6">
             <div className="text-center">
               <Radio className="mx-auto mb-3 h-6 w-6 animate-pulse text-neon-cyan" />

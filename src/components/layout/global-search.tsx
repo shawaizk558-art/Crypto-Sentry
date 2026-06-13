@@ -1,90 +1,29 @@
 "use client";
 
-import { liveMarketFetchInit } from "@/lib/coingecko-client";
+import { useLivePrices } from "@/hooks/use-live-prices";
 import { cn, formatUsd } from "@/lib/utils";
-import type { SearchResponse, SearchResult } from "@/types/search";
-import { ExternalLink, Layers, Search, TrendingUp } from "lucide-react";
+import type { MarketCoin } from "@/types/market";
+import { Search, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-// Heading text for each result group in the dropdown (Assets, Protocols, etc.).
-function groupLabel(type: SearchResult["type"]) {
-  if (type === "asset") return "Assets";
-  if (type === "protocol") return "Protocols";
-  return "Transactions";
-}
+type CoinSearchResult = Pick<
+  MarketCoin,
+  "id" | "name" | "symbol" | "image" | "current_price"
+>;
 
-// One row in the search dropdown — shows asset, protocol, or transaction info.
+// One row in the search dropdown.
 function ResultRow({
   result,
+  rank,
   active,
   onSelect,
 }: {
-  result: SearchResult;
+  result: CoinSearchResult;
+  rank: number;
   active: boolean;
-  onSelect: (result: SearchResult) => void;
+  onSelect: (result: CoinSearchResult) => void;
 }) {
-  if (result.type === "asset") {
-    return (
-      <button
-        type="button"
-        onClick={() => onSelect(result)}
-        className={cn(
-          "flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors",
-          active ? "bg-neon-cyan/10" : "hover:bg-neon-cyan/[0.06]",
-        )}
-      >
-        {result.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={result.image}
-            alt=""
-            className="h-7 w-7 rounded-full border border-border/60"
-          />
-        ) : (
-          <div className="flex h-7 w-7 items-center justify-center rounded-full border border-neon-cyan/30 bg-neon-cyan/5 font-mono text-[9px] font-bold text-neon-cyan">
-            {result.symbol.slice(0, 3)}
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">{result.name}</p>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-dim">
-            {result.symbol}
-            {result.marketCapRank ? ` · #${result.marketCapRank}` : ""}
-          </p>
-        </div>
-        {result.price != null && result.price > 0 ? (
-          <span className="font-mono text-xs text-muted">{formatUsd(result.price)}</span>
-        ) : (
-          <TrendingUp className="h-3.5 w-3.5 text-dim" strokeWidth={1.5} />
-        )}
-      </button>
-    );
-  }
-
-  if (result.type === "protocol") {
-    return (
-      <button
-        type="button"
-        onClick={() => onSelect(result)}
-        className={cn(
-          "flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors",
-          active ? "bg-neon-cyan/10" : "hover:bg-neon-cyan/[0.06]",
-        )}
-      >
-        <div className="flex h-7 w-7 items-center justify-center rounded-sm border border-neon-magenta/30 bg-neon-magenta/5">
-          <Layers className="h-3.5 w-3.5 text-neon-magenta" strokeWidth={1.5} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">{result.name}</p>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-dim">
-            {result.chain} · {result.category}
-          </p>
-        </div>
-      </button>
-    );
-  }
-
   return (
     <button
       type="button"
@@ -94,71 +33,77 @@ function ResultRow({
         active ? "bg-neon-cyan/10" : "hover:bg-neon-cyan/[0.06]",
       )}
     >
-      <div className="flex h-7 w-7 items-center justify-center rounded-sm border border-border bg-bg-elevated">
-        <ExternalLink className="h-3.5 w-3.5 text-dim" strokeWidth={1.5} />
-      </div>
+      {result.image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={result.image}
+          alt=""
+          className="h-7 w-7 rounded-full border border-border/60"
+        />
+      ) : (
+        <div className="flex h-7 w-7 items-center justify-center rounded-full border border-neon-cyan/30 bg-neon-cyan/5 font-mono text-[9px] font-bold text-neon-cyan">
+          {result.symbol.slice(0, 3)}
+        </div>
+      )}
       <div className="min-w-0 flex-1">
-        <p className="truncate font-mono text-xs text-foreground">{result.hash}</p>
+        <p className="truncate text-sm font-medium text-foreground">{result.name}</p>
         <p className="font-mono text-[10px] uppercase tracking-widest text-dim">
-          {result.chain} transaction
+          {result.symbol.toUpperCase()} · #{rank}
         </p>
       </div>
+      {result.current_price > 0 ? (
+        <span className="font-mono text-xs text-muted">
+          {formatUsd(result.current_price)}
+        </span>
+      ) : (
+        <TrendingUp className="h-3.5 w-3.5 text-dim" strokeWidth={1.5} />
+      )}
     </button>
   );
 }
 
-// Top-bar search box with live results as you type.
+function scoreCoin(coin: MarketCoin, q: string) {
+  const name = coin.name.toLowerCase();
+  const symbol = coin.symbol.toLowerCase();
+  const id = coin.id.toLowerCase();
+
+  const nameStarts = name.startsWith(q);
+  const symbolStarts = symbol.startsWith(q);
+  const idStarts = id.startsWith(q);
+  const contains = name.includes(q) || symbol.includes(q) || id.includes(q);
+
+  if (!nameStarts && !symbolStarts && !idStarts && !contains) return null;
+
+  return (
+    (nameStarts ? 4 : 0) +
+    (symbolStarts ? 3 : 0) +
+    (idStarts ? 2 : 0) +
+    (contains ? 1 : 0)
+  );
+}
+
+// Top-bar search over the live top-100 market list.
 export function GlobalSearch() {
   const router = useRouter();
+  const { coins, loading } = useLivePrices();
   const rootRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
 
-  const abortRef = useRef<AbortController | null>(null);
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
 
-  // Call /api/search after the user stops typing (debounced).
-  const fetchResults = useCallback(async (q: string) => {
-    const trimmed = q.trim();
-    abortRef.current?.abort();
-
-    if (!trimmed) {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
-
-    try {
-      const res = await fetch(
-        `/api/search?q=${encodeURIComponent(trimmed)}`,
-        { ...liveMarketFetchInit, signal: controller.signal },
-      );
-      const data = (await res.json()) as SearchResponse;
-      if (!controller.signal.aborted) {
-        setResults(data.results ?? []);
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      if (!controller.signal.aborted) setResults([]);
-    } finally {
-      if (!controller.signal.aborted) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void fetchResults(query);
-    }, 400);
-    return () => window.clearTimeout(timer);
-  }, [query, fetchResults]);
-
-  useEffect(() => () => abortRef.current?.abort(), []);
+    return coins
+      .map((coin, index) => {
+        const score = scoreCoin(coin, q);
+        return score != null ? { coin, score, rank: index + 1 } : null;
+      })
+      .filter((row): row is { coin: MarketCoin; score: number; rank: number } => row !== null)
+      .sort((a, b) => b.score - a.score || a.rank - b.rank)
+      .slice(0, 10);
+  }, [coins, query]);
 
   useEffect(() => {
     function onPointerDown(event: MouseEvent) {
@@ -171,28 +116,18 @@ export function GlobalSearch() {
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, []);
 
-  // Open explorer for TX, or go to market page for assets and protocols.
-  function handleSelect(result: SearchResult) {
+  function handleSelect(result: CoinSearchResult) {
     setOpen(false);
     setActiveIndex(-1);
-
-    if (result.type === "transaction") {
-      window.open(result.explorerUrl, "_blank", "noopener,noreferrer");
-      return;
-    }
-
-    const assetId =
-      result.type === "asset" ? result.id : result.assetId ?? result.id;
-    router.push(`/market?q=${encodeURIComponent(assetId)}`);
+    setQuery("");
+    router.push(`/market?coin=${encodeURIComponent(result.id)}`);
   }
 
-  // Arrow keys to move, Enter to pick, Escape to close the dropdown.
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (!open && event.key !== "Escape") return;
-
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setOpen(true);
+      if (results.length === 0) return;
       setActiveIndex((prev) => Math.min(prev + 1, results.length - 1));
       return;
     }
@@ -205,7 +140,7 @@ export function GlobalSearch() {
 
     if (event.key === "Enter" && activeIndex >= 0 && results[activeIndex]) {
       event.preventDefault();
-      handleSelect(results[activeIndex]);
+      handleSelect(results[activeIndex].coin);
       return;
     }
 
@@ -216,7 +151,6 @@ export function GlobalSearch() {
   }
 
   const showPanel = open && query.trim().length > 0;
-  let lastType: SearchResult["type"] | null = null;
 
   return (
     <div ref={rootRef} className="relative max-w-xl flex-1">
@@ -234,7 +168,7 @@ export function GlobalSearch() {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
-        placeholder="Search assets, protocols, TX IDs..."
+        placeholder="Search top 100 coins…"
         className="cyber-input py-2.5 pl-10 pr-4"
         autoComplete="off"
         spellCheck={false}
@@ -242,30 +176,26 @@ export function GlobalSearch() {
 
       {showPanel && (
         <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-sm border border-border bg-bg-deep/95 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-          {loading ? (
-            <p className="px-4 py-3 font-mono text-xs text-muted">Searching…</p>
+          {loading && coins.length === 0 ? (
+            <p className="px-4 py-3 font-mono text-xs text-muted">Loading market data…</p>
           ) : results.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-dim">No matches for &ldquo;{query.trim()}&rdquo;</p>
+            <p className="px-4 py-3 text-sm text-dim">
+              No top-100 matches for &ldquo;{query.trim()}&rdquo;
+            </p>
           ) : (
             <div className="max-h-80 overflow-y-auto py-1">
-              {results.map((result, index) => {
-                const showHeading = result.type !== lastType;
-                lastType = result.type;
-                return (
-                  <div key={`${result.type}-${"hash" in result ? result.hash : result.id}-${index}`}>
-                    {showHeading && (
-                      <p className="px-4 pb-1 pt-2 font-mono text-[9px] uppercase tracking-[0.2em] text-dim">
-                        {groupLabel(result.type)}
-                      </p>
-                    )}
-                    <ResultRow
-                      result={result}
-                      active={index === activeIndex}
-                      onSelect={handleSelect}
-                    />
-                  </div>
-                );
-              })}
+              <p className="px-4 pb-1 pt-2 font-mono text-[9px] uppercase tracking-[0.2em] text-dim">
+                Top 100
+              </p>
+              {results.map(({ coin, rank }, index) => (
+                <ResultRow
+                  key={coin.id}
+                  result={coin}
+                  rank={rank}
+                  active={index === activeIndex}
+                  onSelect={handleSelect}
+                />
+              ))}
             </div>
           )}
         </div>

@@ -24,15 +24,19 @@ function LoginFormInner() {
   const callbackError =
     error === "CredentialsSignin"
       ? "Invalid email or password."
-      : error === "OAuthAccountNotLinked"
-        ? "This email is registered with a password. Sign in with email first."
-        : error === "Configuration"
-          ? "Sign-in could not complete. Try again or use email login."
-          : error === "callback"
-            ? "Sign-in was interrupted. Try again."
-            : error
-              ? "Sign-in failed. Try again."
-              : null;
+      : error === "NoAccount"
+        ? "No account found for this Gmail. Create an account first."
+        : error === "InvalidVerification"
+          ? "This verification link is invalid or expired."
+          : error === "OAuthAccountNotLinked"
+          ? "This email is registered with a password. Sign in with email first."
+          : error === "Configuration"
+            ? "Sign-in could not complete. Try again or use email login."
+            : error === "callback"
+              ? "Sign-in was interrupted. Try again."
+              : error
+                ? "Sign-in failed. Try again."
+                : null;
 
   // Submits credentials via NextAuth and redirects on success.
   async function handleLogin(e: React.FormEvent) {
@@ -108,7 +112,7 @@ function LoginFormInner() {
 
       <AuthOrDivider />
 
-      <GoogleSignInButton label="Sign in with Google" variant="outline" />
+      <GoogleSignInButton label="Sign in with Google" intent="login" variant="outline" />
 
       <AuthFooterLink
         text="New operative?"

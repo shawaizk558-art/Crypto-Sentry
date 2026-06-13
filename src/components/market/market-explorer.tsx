@@ -1,18 +1,24 @@
 "use client";
 
 import { OperativePageHeader } from "@/components/layout/operative-page-header";
+import { MarketTableSkeleton } from "@/components/ui/content-skeleton";
 import { useLivePrices } from "@/hooks/use-live-prices";
 import {
   formatLiveUsd,
   formatMarketCap,
   liveMarketFetchInit,
 } from "@/lib/coingecko-client";
+import {
+  readCache,
+  WATCHLIST_CACHE_KEY,
+  watchlistStore,
+  writeCache,
+} from "@/lib/client-cache";
 import { PriceChangeCell } from "@/components/ui/price-change";
 import { cn } from "@/lib/utils";
 import { AlertCircle, BarChart3, Search, Star } from "lucide-react";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Coin = {
   id: string;
@@ -26,24 +32,27 @@ type Coin = {
   price_change_percentage_7d: number;
 };
 
-// Searchable table of top coins with watchlist toggle actions.
-export function MarketExplorer() {
-  const searchParams = useSearchParams();
-  const { coins, meta, loading } = useLivePrices();
-  const [watchIds, setWatchIds] = useState<Set<string>>(new Set());
-  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
-  const [stale, setStale] = useState(false);
+type WatchlistRow = { assetId: string };
 
-  useEffect(() => {
-    const q = searchParams.get("q");
-    if (q) setQuery(q);
-  }, [searchParams]);
+// Searchable table of top coins with watchlist toggle actions.
+export function MarketExplorer({ highlightCoinId = "" }: { highlightCoinId?: string }) {
+  const { coins, meta, loading } = useLivePrices();
+  const cachedWatchlist = readCache<WatchlistRow[]>(watchlistStore, WATCHLIST_CACHE_KEY);
+  const [watchIds, setWatchIds] = useState<Set<string>>(
+    () => new Set((cachedWatchlist ?? []).map((i) => i.assetId)),
+  );
+  const [query, setQuery] = useState("");
+  const [stale, setStale] = useState(false);
+  const [flashCoinId, setFlashCoinId] = useState<string | null>(null);
+  const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
 
   // Loads the user's watchlist IDs for star toggle state.
   const loadWatchlist = useCallback(async () => {
     const res = await fetch("/api/watchlist", liveMarketFetchInit);
     const watch = await res.json();
-    setWatchIds(new Set((watch.items ?? []).map((i: { assetId: string }) => i.assetId)));
+    const items = watch.items ?? [];
+    writeCache(watchlistStore, WATCHLIST_CACHE_KEY, items);
+    setWatchIds(new Set(items.map((i: WatchlistRow) => i.assetId)));
   }, []);
 
   useEffect(() => {
@@ -57,6 +66,26 @@ export function MarketExplorer() {
   useEffect(() => {
     setStale(Boolean(meta?.stale));
   }, [meta?.stale]);
+
+  useEffect(() => {
+    if (!highlightCoinId || loading) return;
+    const exists = (coins as Coin[]).some((coin) => coin.id === highlightCoinId);
+    if (!exists) return;
+
+    const scrollTimer = window.setTimeout(() => {
+      rowRefs.current[highlightCoinId]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      setFlashCoinId(highlightCoinId);
+    }, 80);
+
+    const clearTimer = window.setTimeout(() => setFlashCoinId(null), 2600);
+    return () => {
+      window.clearTimeout(scrollTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [highlightCoinId, loading, coins]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -115,9 +144,9 @@ export function MarketExplorer() {
       </div>
 
       {loading ? (
-        <p className="font-mono text-sm text-muted">Loading market cache…</p>
+        <MarketTableSkeleton />
       ) : (
-        <div className="card-surface overflow-hidden">
+        <div className="card-surface overflow-hidden animate-page-in">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border bg-bg-elevated/40 font-mono text-[10px] uppercase tracking-wider text-muted">
@@ -136,9 +165,14 @@ export function MarketExplorer() {
                 return (
                   <tr
                     key={coin.id}
+                    ref={(el) => {
+                      rowRefs.current[coin.id] = el;
+                    }}
                     className={cn(
                       "border-b border-border/40 transition-colors hover:bg-neon-cyan/[0.03]",
                       i % 2 === 0 && "bg-bg-elevated/10",
+                      flashCoinId === coin.id &&
+                        "bg-neon-cyan/10 ring-1 ring-inset ring-neon-cyan/40",
                     )}
                   >
                     <td className="px-5 py-4">

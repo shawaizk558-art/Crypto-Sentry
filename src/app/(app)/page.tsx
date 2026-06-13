@@ -1,6 +1,4 @@
-import { TerminalHome } from "@/components/dashboard/terminal-home";
-
-// Main dashboard route rendering the terminal home view.
+// Route anchor for /. Content renders via AppContentRouter in the app layout.
 export default function DashboardPage() {
-  return <TerminalHome />;
+  return null;
 }

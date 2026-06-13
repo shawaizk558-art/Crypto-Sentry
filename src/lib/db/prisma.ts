@@ -7,7 +7,7 @@ const globalForPrisma = globalThis as unknown as {
   pool: Pool | undefined;
 };
 
-// Supabase session pooler caps total clients (often 15). Keep this pool tiny.
+// Keep the connection pool small for serverless / shared Postgres hosts.
 const POOL_MAX = Math.max(
   1,
   Number.parseInt(process.env.DATABASE_POOL_MAX ?? "2", 10) || 2,
@@ -38,5 +38,25 @@ function createPrisma() {
   return new PrismaClient({ adapter });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrisma();
-globalForPrisma.prisma = prisma;
+function getPrisma(): PrismaClient {
+  const existing = globalForPrisma.prisma;
+  // Hot reload can keep an old client after schema changes — recreate when stale.
+  const isCurrent =
+    existing != null &&
+    typeof (existing as PrismaClient & { verificationToken?: { deleteMany?: unknown } })
+      .verificationToken?.deleteMany === "function";
+
+  if (isCurrent) {
+    return existing;
+  }
+
+  if (existing) {
+    void existing.$disconnect();
+  }
+
+  const client = createPrisma();
+  globalForPrisma.prisma = client;
+  return client;
+}
+
+export const prisma = getPrisma();

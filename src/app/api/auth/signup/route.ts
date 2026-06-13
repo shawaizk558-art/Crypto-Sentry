@@ -32,6 +32,7 @@ export async function POST(request: Request) {
         email,
         password_hash,
         name: email.split("@")[0],
+        emailVerified: new Date(),
       },
     });
 

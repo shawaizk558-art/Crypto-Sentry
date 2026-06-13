@@ -1,7 +1,6 @@
 "use client";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { cn } from "@/lib/utils";
 import {
   BarChart3,
   Bell,
@@ -12,8 +11,11 @@ import {
   Star,
   User,
 } from "lucide-react";
+import { NavLink } from "@/components/layout/nav-link";
+import { useAlertsUnread } from "@/components/providers/alerts-unread-provider";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -34,6 +36,13 @@ type SidebarUser = {
 export function Sidebar({ user }: { user: SidebarUser | null }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { unreadCount } = useAlertsUnread();
+
+  useEffect(() => {
+    for (const { href } of navItems) {
+      router.prefetch(href);
+    }
+  }, [router]);
 
   // Signs the user out and redirects to login.
   async function signOut() {
@@ -84,29 +93,15 @@ export function Sidebar({ user }: { user: SidebarUser | null }) {
                   ? "nav-alerts"
                   : undefined;
           return (
-            <Link
+            <NavLink
               key={href}
               href={href}
-              data-tour={tourId}
-              className={cn(
-                "group relative flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm transition-all",
-                active
-                  ? "nav-active font-medium text-neon-cyan"
-                  : "text-muted hover:bg-bg-elevated/60 hover:text-foreground",
-              )}
-            >
-              <Icon
-                className={cn(
-                  "h-4 w-4 shrink-0 transition-colors",
-                  active ? "text-neon-cyan cyan-glow" : "group-hover:text-neon-cyan/70",
-                )}
-                strokeWidth={active ? 2 : 1.5}
-              />
-              <span className="font-medium">{label}</span>
-              {active && (
-                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-neon-cyan animate-pulse-dot" />
-              )}
-            </Link>
+              label={label}
+              icon={Icon}
+              active={active}
+              tourId={tourId}
+              badge={href === "/alerts" ? unreadCount : undefined}
+            />
           );
         })}
       </nav>

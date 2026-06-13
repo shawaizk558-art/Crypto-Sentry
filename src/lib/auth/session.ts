@@ -3,9 +3,10 @@ import "server-only";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db/prisma";
 import type { SessionUser } from "@/types/auth";
+import { cache } from "react";
 
 // Get the logged-in user, or null if nobody is signed in.
-export async function getSessionUser(): Promise<SessionUser | null> {
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const session = await auth();
   if (!session?.user?.id) return null;
 
@@ -31,7 +32,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     onboarding_completed: user.onboarding_completed,
     created_at: user.created_at,
   };
-}
+});
 
 // Get the logged-in user, or throw "Unauthorized" if not signed in.
 export async function requireSessionUser(): Promise<SessionUser> {

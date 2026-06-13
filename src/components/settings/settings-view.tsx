@@ -1,6 +1,7 @@
 "use client";
 
 import { OperativePageHeader } from "@/components/layout/operative-page-header";
+import { useInitialUserSettings } from "@/components/providers/user-settings-provider";
 import { useUiDensity } from "@/components/providers/ui-density-provider";
 import type { UiDensity } from "@/lib/user/settings";
 import { cn } from "@/lib/utils";
@@ -31,14 +32,24 @@ function mapApiSettings(data: {
 // Settings page for alert threshold and UI density preferences.
 export function SettingsView() {
   const { setDensity } = useUiDensity();
-  const [settings, setSettings] = useState<SettingsData>(defaults);
-  const [ready, setReady] = useState(false);
+  const initial = useInitialUserSettings();
+  const [settings, setSettings] = useState<SettingsData>(() =>
+    initial
+      ? mapApiSettings({
+          alert_threshold: initial.alert_threshold,
+          ui_density: initial.ui_density,
+        })
+      : defaults,
+  );
+  const [ready, setReady] = useState(!!initial);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Loads current settings from the API on mount.
+    if (initial) return;
+
+    // Loads current settings from the API when not provided by the shell.
     async function load() {
       const res = await fetch("/api/user/settings");
       if (res.ok) {
@@ -50,7 +61,7 @@ export function SettingsView() {
       setReady(true);
     }
     void load();
-  }, [setDensity]);
+  }, [initial, setDensity]);
 
   // Saves a partial settings patch to the API.
   async function persist(patch: Partial<SettingsData>) {

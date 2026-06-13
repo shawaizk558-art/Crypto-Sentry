@@ -62,6 +62,15 @@ function SignupFormInner() {
   return (
     <>
       <div className="space-y-4">
+        {error === "AlreadyRegistered" && (
+          <div className="space-y-4 rounded-sm border border-neon-magenta/40 bg-neon-magenta/10 px-3 py-3">
+            <p className="text-sm text-foreground">
+              This Gmail is already registered. Sign in with Google to access your dashboard.
+            </p>
+            <GoogleSignInButton label="Sign in with Google" intent="login" variant="primary" />
+          </div>
+        )}
+
         {(error === "callback" || error === "OAuthAccountNotLinked") && (
           <p className="rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
             Google sign-up failed. Try again.
@@ -125,7 +134,7 @@ function SignupFormInner() {
 
         <AuthOrDivider />
 
-        <GoogleSignInButton label="Sign up with Google" variant="outline" />
+        <GoogleSignInButton label="Sign up with Google" intent="signup" variant="outline" />
       </div>
 
       <AuthFooterLink
